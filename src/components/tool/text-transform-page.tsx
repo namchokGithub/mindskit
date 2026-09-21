@@ -31,6 +31,7 @@ type TextTransformPageConfig = {
   timeZone?: boolean
   language?: 'json' | 'xml' | 'markdown' | 'text'
   outputPreview?: (output: string) => ReactNode
+  inputAction?: { label: string; icon: LucideIcon; value: () => string }
 }
 
 export function TextTransformPage(config: TextTransformPageConfig) {
@@ -45,6 +46,7 @@ export function TextTransformPage(config: TextTransformPageConfig) {
   const [hasRun, setHasRun] = useState(false)
   const { confirm, dialog } = useLargeInputConfirmation()
   const ActionIcon = config.actionIcon
+  const InputActionIcon = config.inputAction?.icon
 
   const run = (nextInput = input, nextOption = option) => {
     setOutput(config.process(nextInput, nextOption, prefix, suffix, timeZone))
@@ -88,6 +90,13 @@ export function TextTransformPage(config: TextTransformPageConfig) {
     setHasRun(false)
   }
 
+  const handleInputAction = () => {
+    const nextInput = config.inputAction?.value()
+    if (!nextInput) return
+    setInput(nextInput)
+    run(nextInput)
+  }
+
   return (
     <div className="flex min-h-0 flex-col gap-4 lg:h-full">
       <ToolPageHeader title={config.title} description={config.description} />
@@ -98,6 +107,7 @@ export function TextTransformPage(config: TextTransformPageConfig) {
             <ActionIcon />
             {config.actionLabel}
           </Button>
+          {config.inputAction && InputActionIcon && <Button type="button" size="sm" variant="outline" onClick={handleInputAction}><InputActionIcon />{config.inputAction.label}</Button>}
           {config.operations && (
             <Select value={option} onValueChange={handleOptionChange}>
               <SelectTrigger size="sm" className="w-auto min-w-[8rem]"><SelectValue /></SelectTrigger>

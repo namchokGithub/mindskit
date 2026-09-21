@@ -1,4 +1,4 @@
-import { Binary, ChevronDown, FileCode, Link2, Shuffle, TimerReset } from 'lucide-react'
+import { Binary, ChevronDown, Clock, FileCode, Link2, Shuffle, TimerReset } from 'lucide-react'
 import { useState } from 'react'
 
 import { TextTransformPage } from '@/components/tool/text-transform-page'
@@ -9,7 +9,7 @@ import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { convertBase64, convertHtml, convertTimestamp, convertUrl, quickOperations } from '@/features/quick-tools'
+import { convertBase64, convertHtml, convertTimestamp, convertUrl, currentUnixTimestamp, quickOperations } from '@/features/quick-tools'
 
 export function Base64Page() {
   return <TextTransformPage title="Base64" description="Encode or decode Base64 text entirely in your browser." actionLabel="Convert" actionIcon={Binary} storageKey="base64" inputPlaceholder="Paste text or Base64 here…" sample="Hello, MindsKit!" process={convertBase64} operations={[...quickOperations.base64]} />
@@ -24,7 +24,7 @@ export function HtmlEncodeDecodePage() {
 }
 
 export function UnixTimestampPage() {
-  return <TextTransformPage title="Unix Timestamp" description="Convert between Unix timestamps and ISO date/time values." actionLabel="Convert" actionIcon={TimerReset} storageKey="unix-timestamp" inputPlaceholder="Enter a timestamp or date…" sample="1704067200" samples={{ 'to-date': '1704067200', 'to-timestamp': '2024-01-01T00:00:00.000Z' }} process={convertTimestamp} operations={[...quickOperations.timestamp]} timeZone />
+  return <TextTransformPage title="Unix Timestamp" description="Convert between Unix timestamps and ISO date/time values." actionLabel="Convert" actionIcon={TimerReset} storageKey="unix-timestamp" inputPlaceholder="Enter a timestamp or date…" sample="1704067200" samples={{ 'to-date': '1704067200', 'to-timestamp': '2024-01-01T00:00:00.000Z' }} process={convertTimestamp} operations={[...quickOperations.timestamp]} timeZone inputAction={{ label: 'Now', icon: Clock, value: currentUnixTimestamp }} />
 }
 
 export function UuidPage() {

@@ -16,6 +16,10 @@ export const quickOperations = {
   timestamp: [{ label: 'Timestamp → Date', value: 'to-date' }, { label: 'Date → Timestamp', value: 'to-timestamp' }],
 } as const
 
+export function currentUnixTimestamp(now = Date.now()): string {
+  return String(Math.floor(now / 1000))
+}
+
 export function convertBase64(input: string, operation: string): string {
   try {
     return operation === 'decode'
