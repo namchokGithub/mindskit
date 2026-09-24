@@ -44,6 +44,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Text Decoration: case transforms plus prefix and suffix wrapping
 - Markdown: bold and italic transforms with a rendered Markdown preview
 - Split Text and Join Text
+- README Builder: compose a structured README from templates and a section library, with a GitHub-style preview, Markdown import/export, and local-only drafts (browser storage, not sent anywhere)
 
 ### Encode / Decode
 

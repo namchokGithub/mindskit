@@ -42,6 +42,7 @@ export function AppShell() {
   const favoriteTool = quickActions.favorites.map((id) => tools.find((tool) => tool.id === id)).find(Boolean);
   const isToolPage = tools.some((tool) => tool.path === pathname);
   const isConstrainedPage = isToolPage || pathname === "/";
+  const isFullWidthTool = pathname === "/text-tools/readme-builder";
 
   return (
     <div className="relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-background">
@@ -134,7 +135,7 @@ export function AppShell() {
           <SidebarNav />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col overflow-visible px-4 pt-[calc(3.5rem+1rem)] pb-4 sm:px-6 sm:pt-[calc(3.5rem+1.5rem)] sm:pb-6 lg:overflow-x-hidden lg:p-6">
-          <div className={isConstrainedPage ? "flex min-h-0 w-full flex-1 flex-col lg:mx-auto lg:max-w-[1120px]" : "w-full"}>
+          <div className={isConstrainedPage ? `flex min-h-0 w-full flex-1 flex-col ${isFullWidthTool ? "" : "lg:mx-auto lg:max-w-[1120px]"}` : "w-full"}>
             <Outlet />
           </div>
         </main>
