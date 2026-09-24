@@ -1,4 +1,13 @@
-# MindsKit
+<h1>
+  MindsKit
+  <img
+    src="src/assets/mindskit-logo2.png"
+    alt="Logo"
+    width="48"
+    height="48"
+    align="center"
+  />
+</h1>
 
 > A privacy-first developer toolbox that runs entirely in your browser.
 
@@ -127,3 +136,7 @@ MindsKit is a static single-page application. Deploy it to a static host such as
 ## License
 
 [MIT](LICENSE)
+
+---
+
+© _2026 Namchok Singhachai_. MindsKit is released under the MIT License.
