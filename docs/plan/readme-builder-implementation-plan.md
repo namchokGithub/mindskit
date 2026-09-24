@@ -16,6 +16,7 @@
 - Add no npm dependency.
 - Register Text Tools route `/text-tools/readme-builder` in both `src/config/tools.ts` and `src/App.tsx`.
 - Preserve the 10 MiB file limit and `.md,.markdown,.txt` filters.
+- Badge preview loads images from `https://img.shields.io`; update `public/_headers` `img-src` to allow that origin only — do not broaden CSP to arbitrary external image domains in v1.
 - Do not persist secrets; update `README.md` and `CONTEXT.md` when shipped.
 
 ## Review Focus
@@ -35,7 +36,7 @@
 - Create `src/features/readme-builder/drafts.ts`: IndexedDB adapter.
 - Create `src/pages/readme-builder-page.tsx`: workspace UI and browser side effects.
 - Create `tests/readme-builder.test.ts`: Node tests for every pure module.
-- Modify `src/config/tools.ts`, `src/App.tsx`, `README.md`, and `CONTEXT.md`.
+- Modify `src/config/tools.ts`, `src/App.tsx`, `public/_headers`, `README.md`, and `CONTEXT.md`.
 
 ### Task 1: Implement the document model and templates
 
@@ -44,9 +45,9 @@
 - Create: `tests/readme-builder.test.ts`
 
 **Interfaces:**
-- Produces `ProjectType` = `'blank' | 'web-app' | 'frontend-app' | 'backend-api' | 'cli-tool' | 'library-package' | 'mobile-app' | 'full-stack-app'`.
+- Produces `ProjectType` = `'default' | 'blank' | 'web-app' | 'frontend-app' | 'backend-api' | 'cli-tool' | 'library-package' | 'mobile-app' | 'full-stack-app'`.
 - Produces `SectionKind` for all 19 library entries; `ReadmeSection = { id; kind; title; visible; fields: Record<string, string>; body }`; `ReadmeBadge = { id; label; message; color; link }`; and `ReadmeDocument = { version: 1; id; name; title; projectType; includeTableOfContents; badges; sections }`.
-- Produces `createDocument(projectType?: ProjectType)`, `applyTemplate(projectType)`, `addSection(document, kind)`, `updateSection(document, id, update)`, `duplicateSection(document, id)`, `moveSection(document, id, targetIndex)`, `validateDocument(document)`, and `pushHistory(history, next, limit = 50)`.
+- Produces `createDocument(projectType: ProjectType)` (required, no ambiguous no-argument call), `applyTemplate(projectType)`, `addSection(document, kind)`, `updateSection(document, id, update)`, `duplicateSection(document, id)`, `moveSection(document, id, targetIndex)`, `validateDocument(document)`, and `pushHistory(history, next, limit = 50)`.
 
 - [ ] **Step 1: Write the failing template and mutation tests**
 
@@ -63,7 +64,7 @@ test('frontend template preloads its documented section order', () => {
 })
 
 test('duplicate and move retain unique ids without mutating input', () => {
-  const source = createDocument()
+  const source = createDocument('default')
   const next = moveSection(duplicateSection(source, source.sections[0].id), source.sections[0].id, 1)
   assert.equal(new Set(next.sections.map((section) => section.id)).size, next.sections.length)
   assert.equal(source.sections.length, 7)
@@ -82,13 +83,13 @@ Expected: FAIL because the feature module does not exist.
 
 - [ ] **Step 3: Implement the model**
 
-Define one section-library record per kind with default title, edit field definitions, and defaults. Define all eight documented templates and ensure general new documents contain the seven default sections. Return fresh objects and UUIDs from every constructor; never mutate arguments. Validation must emit typed issues for blank document title, blank visible custom title, duplicate visible headings, and sections whose required fields/body are empty.
+Define one section-library record per kind with default title, edit field definitions, and defaults. `createDocument` takes a required `projectType` argument. Define all nine documented templates (`default` plus the eight named project types); `createDocument('default')` contains the seven default sections (Overview, Features, Tech Stack, Installation, Usage, Deployment, License) and `createDocument('blank')` contains zero sections. Return fresh objects and UUIDs from every constructor; never mutate arguments. Validation must emit typed issues for blank document title, blank visible custom title, duplicate visible headings, and sections whose required fields/body are empty.
 
 - [ ] **Step 4: Add history-limit tests**
 
 ```ts
 test('history keeps the newest 50 immutable snapshots', () => {
-  const snapshots = Array.from({ length: 51 }, (_, index) => ({ ...createDocument(), name: String(index) }))
+  const snapshots = Array.from({ length: 51 }, (_, index) => ({ ...createDocument('default'), name: String(index) }))
   const history = snapshots.reduce((current, next) => pushHistory(current, next), [])
   assert.equal(history.length, 50)
   assert.equal(history[0].name, '1')
@@ -177,24 +178,49 @@ git commit -m "feat(readme-builder): render and import README markdown"
 
 **Interfaces:**
 - Consumes `ReadmeDocument`.
-- Produces `ReadmeDraftSummary = { id; name; updatedAt }`, `listDrafts(): Promise<ReadmeDraftSummary[]>`, `loadDraft(id): Promise<ReadmeDocument | null>`, `saveDraft(document): Promise<ReadmeDraftSummary>`, `renameDraft(id, name): Promise<void>`, and `deleteDraft(id): Promise<void>`.
+- Produces `ReadmeDraftSummary = { id; name; updatedAt }` and a `DraftStorage` seam (`get`, `put`, `delete`, `list`).
+- Produces `createDraftsAdapter(storage: DraftStorage)` returning `{ listDrafts(): Promise<ReadmeDraftSummary[]>; loadDraft(id): Promise<ReadmeDocument | null>; saveDraft(document): Promise<ReadmeDraftSummary>; renameDraft(id, name): Promise<void>; deleteDraft(id): Promise<void> }`.
+- Produces `createMemoryDraftStorage()` (in-memory test double) and `createIndexedDbDraftStorage()` (real browser storage), plus default `listDrafts`/`loadDraft`/`saveDraft`/`renameDraft`/`deleteDraft` exports pre-bound to `createDraftsAdapter(createIndexedDbDraftStorage())` for the page to import directly.
 
-- [ ] **Step 1: Add tests for the pure error and history contracts**
+- [ ] **Step 1: Write failing fake-adapter tests**
 
 ```ts
-test('pushHistory does not mutate prior snapshots', () => {
-  const prior = [createDocument()]
-  const next = pushHistory(prior, createDocument())
-  assert.equal(prior.length, 1)
-  assert.equal(next.length, 2)
+import { createDraftsAdapter, createMemoryDraftStorage } from '../src/features/readme-builder/drafts.ts'
+
+test('saveDraft creates then update preserves the same document id', async () => {
+  const drafts = createDraftsAdapter(createMemoryDraftStorage())
+  const created = await drafts.saveDraft(createDocument('default'))
+  const updated = await drafts.saveDraft({ ...(await drafts.loadDraft(created.id)), name: 'Renamed' })
+  assert.equal(updated.id, created.id)
+})
+
+test('listDrafts sorts newest first and deleteDraft removes the record', async () => {
+  const drafts = createDraftsAdapter(createMemoryDraftStorage())
+  const first = await drafts.saveDraft(createDocument('default'))
+  const second = await drafts.saveDraft(createDocument('blank'))
+  assert.deepEqual((await drafts.listDrafts()).map((entry) => entry.id), [second.id, first.id])
+  await drafts.deleteDraft(second.id)
+  assert.equal(await drafts.loadDraft(second.id), null)
+})
+
+test('loadDraft returns null and renameDraft rejects for a missing id', async () => {
+  const drafts = createDraftsAdapter(createMemoryDraftStorage())
+  assert.equal(await drafts.loadDraft('missing'), null)
+  await assert.rejects(() => drafts.renameDraft('missing', 'x'))
 })
 ```
 
-- [ ] **Step 2: Implement IndexedDB adapter**
+- [ ] **Step 2: Run the focused test and confirm it fails**
 
-Use database `mindskit-readme-builder`, version 1, and a `drafts` object store keyed by document ID. Store document plus `updatedAt`; sort summaries newest first. Wrap request/transaction errors as `Error('Local draft storage is unavailable in this browser.')`. Do not install an IndexedDB test dependency; test adapter behavior manually in Task 4.
+Run: `node --test tests/readme-builder.test.ts`
 
-- [ ] **Step 3: Run and commit**
+Expected: FAIL because `drafts.ts` does not exist.
+
+- [ ] **Step 3: Implement the DraftStorage seam and IndexedDB adapter**
+
+Define `DraftStorage` as the storage seam (`get`, `put`, `delete`, `list`). Implement `createMemoryDraftStorage()` as a `Map`-backed test double and `createIndexedDbDraftStorage()` using database `mindskit-readme-builder`, version 1, and a `drafts` object store keyed by document ID, storing the document plus `updatedAt`. Implement `createDraftsAdapter(storage)` over either storage, sorting `listDrafts` summaries newest first and wrapping storage errors as `Error('Local draft storage is unavailable in this browser.')`. Export `listDrafts`/`loadDraft`/`saveDraft`/`renameDraft`/`deleteDraft` pre-bound to `createDraftsAdapter(createIndexedDbDraftStorage())`. Do not install an external IndexedDB test dependency — `createMemoryDraftStorage` covers Node tests; still manually verify the real IndexedDB adapter in Task 4.
+
+- [ ] **Step 4: Run and commit**
 
 Run: `node --test tests/readme-builder.test.ts`
 
@@ -211,6 +237,7 @@ git commit -m "feat(readme-builder): add local draft persistence"
 - Create: `src/pages/readme-builder-page.tsx`
 - Modify: `src/config/tools.ts`
 - Modify: `src/App.tsx`
+- Modify: `public/_headers`
 
 **Interfaces:**
 - Consumes every public interface from Tasks 1–3.
@@ -229,7 +256,7 @@ git commit -m "feat(readme-builder): add local draft persistence"
 - [ ] **Step 2: Implement document selection and responsive view state**
 
 ```tsx
-const [document, setDocument] = useState(() => createDocument())
+const [document, setDocument] = useState(() => createDocument('default'))
 const [selectedSectionId, setSelectedSectionId] = useState<string | null>(document.sections[0]?.id ?? null)
 const [view, setView] = useState<'builder' | 'markdown' | 'preview'>('builder')
 const markdown = useMemo(() => renderReadme(document), [document])
@@ -243,7 +270,7 @@ Render the library picker, selected-section field editor, Custom Section title/b
 
 - [ ] **Step 4: Implement raw Markdown, preview, badges, TOC, and validation**
 
-Use an editable CodeMirror buffer initialized from rendered Markdown. **Apply Markdown** calls `importReadme`, displays notices, and adds one history entry. Preview with `<ReactMarkdown>{markdown}</ReactMarkdown>` and existing `markdown-preview` styling. Add badge label/message/color/link controls, TOC toggle, and validation output in `ToolStatus`.
+Use an editable CodeMirror buffer initialized from rendered Markdown. **Apply Markdown** calls `importReadme`, displays notices, and adds one history entry. Preview with `<ReactMarkdown>{markdown}</ReactMarkdown>` and existing `markdown-preview` styling. Add badge label/message/color/link controls, TOC toggle, and validation output in `ToolStatus`. Update `public/_headers` `img-src` to explicitly allow `https://img.shields.io` for badge preview images; do not broaden CSP to arbitrary external image domains.
 
 - [ ] **Step 5: Implement import/export and drafts**
 
@@ -256,7 +283,7 @@ link.click()
 window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 ```
 
-Provide save/load/rename/duplicate/delete drafts. After an explicit successful save, auto-save changed documents after 600 ms. Catch IndexedDB errors into status state without touching the in-memory document. Confirm template replacement on meaningful documents, New/Reset, and delete.
+Provide save/load/rename/duplicate/delete drafts. Autosave a draft automatically ~600 ms after the first meaningful edit — do not require an explicit Save first, and do not create an empty draft before the user modifies the document. Catch storage errors into status state without touching the in-memory document. Confirm template replacement on meaningful documents, New/Reset, and delete.
 
 - [ ] **Step 6: Manual browser verification**
 

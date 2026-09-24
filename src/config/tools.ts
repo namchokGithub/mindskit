@@ -3,6 +3,7 @@ import {
   Barcode,
   Binary,
   Bold,
+  BookOpen,
   Braces,
   CalendarClock,
   CheckCircle2,
@@ -260,6 +261,14 @@ export const tools: ToolDefinition[] = [
     category: 'text-tools',
     path: '/text-tools/join-text',
     icon: Combine,
+  },
+  {
+    id: 'readme-builder',
+    name: 'README Builder',
+    description: 'Build, preview, and save clean README.md files locally.',
+    category: 'text-tools',
+    path: '/text-tools/readme-builder',
+    icon: BookOpen,
   },
 
   // Encode / Decode
