@@ -430,6 +430,14 @@ export const tools: ToolDefinition[] = [
 
   // Images
   {
+    id: 'image-resize',
+    name: 'Image Resize',
+    description: 'Export one image at multiple sizes entirely in your browser.',
+    category: 'images',
+    path: '/images/resize',
+    icon: Shrink,
+  },
+  {
     id: 'image-crop',
     name: 'Image Crop',
     description: 'Crop PNG, JPG, and WebP images entirely in your browser.',
