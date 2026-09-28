@@ -11,7 +11,7 @@
 
 > A privacy-first developer toolbox that runs entirely in your browser.
 
-![Version](https://img.shields.io/badge/version-0.2.1-ad60fb?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.2-ad60fb?style=flat-square)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)](https://vite.dev/)
 
 MindsKit is a focused collection of tools for formatting data, transforming text, encoding values, and generating identifiers. Paste your content, process it locally, and copy the result—nothing is uploaded to a server.
@@ -79,6 +79,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Image Resize for PNG, JPEG, and WebP: export one uploaded image at multiple pixel or percentage sizes, processed sequentially in the browser, with an individual download for every result
 - Image Crop with freeform and preset aspect ratios
 - Remove Background using an in-browser AI model
+- Screenshot Beautifier: compose a PNG/JPEG/WebP screenshot with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then export PNG/JPG at up to 2x resolution or copy the result to the clipboard
 
 ## Themes
 

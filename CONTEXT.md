@@ -41,7 +41,7 @@ Last checked against source: 2026-09-06.
 
 ## Current Scope
 
-There are 50 registered tools in eight categories. Exact paths and metadata live in `src/config/tools.ts`; implemented route bindings live in `src/App.tsx`.
+There are 51 registered tools in eight categories. Exact paths and metadata live in `src/config/tools.ts`; implemented route bindings live in `src/App.tsx`.
 
 | Category | Tools |
 | --- | --- |
@@ -52,7 +52,7 @@ There are 50 registered tools in eight categories. Exact paths and metadata live
 | Encode / Decode (`encode-decode`) | Base64, URL, HTML, JWT Encoder / Decoder |
 | Generators (`generators`) | UUID, QR Code, Barcode, Random String, Strong Password Generator |
 | Converters (`converters`) | JSON → YAML, JSON → CSV, Unix Timestamp, JSON → Go Struct, JSON → TypeScript, JSON ↔ XML, Number Base, Letters ↔ Numbers, Color, Date Formatter, Roman Numeral Date |
-| Images (`images`) | Image Resize, Image Crop, Remove Background |
+| Images (`images`) | Image Resize, Image Crop, Remove Background, Screenshot Beautifier |
 
 - JSON routes retain `/formatters/...`; XML tools use both `/formatters/xml` and `/xml/...`. Category IDs do not necessarily match URL prefixes.
 - XML Minify, WSDL Formatter, and SOAP Formatter reuse `XmlFormatterPage` with distinct metadata/storage keys. WSDL/SOAP validation is XML syntax validation, not schema or protocol validation.
@@ -65,6 +65,7 @@ There are 50 registered tools in eight categories. Exact paths and metadata live
 - SQL tools support PostgreSQL, MySQL, and SQL Server. IN Builder accepts raw text/UUIDs or numeric literals with explicit line, CSV, or whitespace separators, deduplication, and IN/NOT IN. INSERT accepts flat JSON object arrays or CSV with unique headers; missing JSON fields become NULL, CSV stays text, and empty CSV fields optionally become NULL. Batch size is 1–1000. Unsupported nested values and unsafe JSON integers are rejected. SQL is generated locally, never executed.
 - SQL identifiers and values are escaped per dialect. PostgreSQL backslashes use E-strings; SQL Server uses Unicode N-strings; MySQL uses utf8mb4 literals and hexadecimal conversion for backslash-containing text to avoid SQL-mode ambiguity. Outputs can be copied or downloaded as `.sql` files.
 - Image Resize (`/images/resize`) accepts one PNG, JPEG, or WebP image of up to 20 MiB and 10,000 px per side. It exports a list of up to 10 pixel or percentage sizes sequentially, limiting peak processing memory; each result has its own download. PNG preserves transparency; JPEG output uses a white background because JPEG has no alpha channel. Output dimensions are limited to 10,000 px per side.
+- Screenshot Beautifier (`/images/screenshot-beautifier`) composes a loaded PNG/JPEG/WebP screenshot (up to 20 MiB, 10,000 px per side) with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then exports PNG/JPG at up to 2x pixel density (capped at 4096 px per edge) via `html-to-image`, or copies the PNG to the clipboard. The screenshot and export never leave the browser; only the last-used canvas preset, gradient preset, and frame persist, and only when Remember input is enabled, under the existing `mindskit:input:<key>` mechanism.
 - Parameters Preview accepts JSON arrays for `?`/`$1` and JSON objects for `:name`, skips placeholders inside SQL strings, quoted identifiers, and comments, and exists only for local debugging; it must not be presented as safe substitution for query execution. CREATE TABLE → Types handles one CREATE TABLE statement and common scalar columns; it does not model all dialect-specific DDL. Syntax Checker uses `sql-formatter` parsing for the selected dialect and cannot validate database schema, permissions, or extensions.
 - Additional routes: home `/`, privacy `/privacy`, and license `/license`.
 
