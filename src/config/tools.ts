@@ -27,6 +27,7 @@ import {
   TextQuote,
   Languages,
   Shuffle,
+  Sparkles,
   SplitSquareHorizontal,
   Heading,
   Table2,
@@ -461,6 +462,14 @@ export const tools: ToolDefinition[] = [
     category: 'images',
     path: '/images/remove-background',
     icon: Wand2,
+  },
+  {
+    id: 'screenshot-beautifier',
+    name: 'Screenshot Beautifier',
+    description: 'Create polished screenshots with gradients, frames, spacing, shadows, and perspective — directly in your browser.',
+    category: 'images',
+    path: '/images/screenshot-beautifier',
+    icon: Sparkles,
   },
 ]
 

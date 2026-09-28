@@ -33,6 +33,9 @@ const ImageRemoveBackgroundPage = lazy(() =>
 const ReadmeBuilderPage = lazy(() =>
   import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
 )
+const ScreenshotBeautifierPage = lazy(() =>
+  import('@/pages/screenshot-beautifier-page').then((module) => ({ default: module.ScreenshotBeautifierPage })),
+)
 import { SqlFormatterPage, SqlInsertPage, SqlMinifierPage } from '@/pages/sql-tools-pages'
 import { CreateTableTypesPage, SqlParametersPage, SqlSyntaxCheckerPage } from '@/pages/sql-advanced-pages'
 import { SqlInClausePage } from '@/pages/sql-in-clause-page'
@@ -112,6 +115,14 @@ export default function App() {
             element={
               <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
                 <ImageRemoveBackgroundPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/images/screenshot-beautifier"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <ScreenshotBeautifierPage />
               </Suspense>
             }
           />
