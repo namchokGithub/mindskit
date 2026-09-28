@@ -36,6 +36,9 @@ export function HomePage() {
                             Soon
                           </Badge>
                         )}
+                        {tool.isNew && (
+                          <Badge className="shrink-0 text-[10px]">New</Badge>
+                        )}
                       </span>
                       <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
                     </CardTitle>
