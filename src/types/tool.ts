@@ -9,6 +9,7 @@ export interface ToolDefinition {
   category: ToolCategory
   path: string
   icon: LucideIcon
+  isNew?: boolean
   comingSoon?: boolean
 }
 

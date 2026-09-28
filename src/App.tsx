@@ -30,6 +30,12 @@ import { ImageResizePage } from '@/pages/image-resize-page'
 const ImageRemoveBackgroundPage = lazy(() =>
   import('@/pages/image-remove-background-page').then((module) => ({ default: module.ImageRemoveBackgroundPage })),
 )
+const ReadmeBuilderPage = lazy(() =>
+  import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
+)
+const ScreenshotBeautifierPage = lazy(() =>
+  import('@/pages/screenshot-beautifier-page').then((module) => ({ default: module.ScreenshotBeautifierPage })),
+)
 import { SqlFormatterPage, SqlInsertPage, SqlMinifierPage } from '@/pages/sql-tools-pages'
 import { CreateTableTypesPage, SqlParametersPage, SqlSyntaxCheckerPage } from '@/pages/sql-advanced-pages'
 import { SqlInClausePage } from '@/pages/sql-in-clause-page'
@@ -74,6 +80,14 @@ export default function App() {
           <Route path="/text-tools/markdown" element={<MarkdownPage />} />
           <Route path="/text-tools/split-text" element={<SplitTextPage />} />
           <Route path="/text-tools/join-text" element={<JoinTextPage />} />
+          <Route
+            path="/text-tools/readme-builder"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <ReadmeBuilderPage />
+              </Suspense>
+            }
+          />
           <Route path="/encode-decode/base64" element={<Base64Page />} />
           <Route path="/encode-decode/url" element={<UrlEncodeDecodePage />} />
           <Route path="/encode-decode/html" element={<HtmlEncodeDecodePage />} />
@@ -101,6 +115,14 @@ export default function App() {
             element={
               <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
                 <ImageRemoveBackgroundPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/images/screenshot-beautifier"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <ScreenshotBeautifierPage />
               </Suspense>
             }
           />

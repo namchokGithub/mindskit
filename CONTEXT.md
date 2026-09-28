@@ -41,18 +41,18 @@ Last checked against source: 2026-09-06.
 
 ## Current Scope
 
-There are 49 registered tools in eight categories. Exact paths and metadata live in `src/config/tools.ts`; implemented route bindings live in `src/App.tsx`.
+There are 51 registered tools in eight categories. Exact paths and metadata live in `src/config/tools.ts`; implemented route bindings live in `src/App.tsx`.
 
 | Category | Tools |
 | --- | --- |
 | SQL (`sql`) | SQL Formatter, SQL Minifier, SQL Parameters Preview, CREATE TABLE → Types, SQL Syntax Checker, SQL IN Builder, JSON / CSV → INSERT |
 | JSON (`json`) | Formatter, Minifier, Validator, Stringify/Parse, Sorter, Compare, Data Generator |
 | XML (`xml`) | Formatter, Minify, Viewer, Validator, WSDL Formatter, SOAP Formatter |
-| Text Tools (`text-tools`) | Remove Spaces, Make One Line, Text Decoration, Markdown, Split Text, Join Text |
+| Text Tools (`text-tools`) | Remove Spaces, Make One Line, Text Decoration, Markdown, Split Text, Join Text, README Builder |
 | Encode / Decode (`encode-decode`) | Base64, URL, HTML, JWT Encoder / Decoder |
 | Generators (`generators`) | UUID, QR Code, Barcode, Random String, Strong Password Generator |
 | Converters (`converters`) | JSON → YAML, JSON → CSV, Unix Timestamp, JSON → Go Struct, JSON → TypeScript, JSON ↔ XML, Number Base, Letters ↔ Numbers, Color, Date Formatter, Roman Numeral Date |
-| Images (`images`) | Image Resize, Image Crop, Remove Background |
+| Images (`images`) | Image Resize, Image Crop, Remove Background, Screenshot Beautifier |
 
 - JSON routes retain `/formatters/...`; XML tools use both `/formatters/xml` and `/xml/...`. Category IDs do not necessarily match URL prefixes.
 - XML Minify, WSDL Formatter, and SOAP Formatter reuse `XmlFormatterPage` with distinct metadata/storage keys. WSDL/SOAP validation is XML syntax validation, not schema or protocol validation.
@@ -60,10 +60,12 @@ There are 49 registered tools in eight categories. Exact paths and metadata live
 - Strong Password Generator supports Random, Memorable, and PIN modes, with cryptographically secure randomness and strength/entropy feedback.
 - QR codes support PNG download; barcodes support SVG download. JSON → YAML/CSV supports output downloads. Markdown includes a rendered preview.
 - JSON Data Generator (`/json/generator`) builds flat JSON object arrays from a local field schema: UUID, running ID, fictional name/email, boolean, integer, decimal, date/time, text, or enum. It supports nullable and unique fields, 1–1000 records, indentation, copy/download, and a one-time `sessionStorage` transfer to SQL INSERT. Generated values use Web Crypto; no generated data is sent to a server.
+- README Builder (`/text-tools/readme-builder`) builds a document from templates and a 20-entry section library, including a Divider that renders `---` without a heading or table-of-contents entry, with Shields.io badges and an optional table of contents, rendered to Markdown by the sole render/import seam in `src/features/readme-builder/markdown.ts`. The workspace is three-column (sections, editor, live preview) on desktop and tab-switched (Builder/Markdown/Preview) on narrow screens. Markdown import is conservative: only an initial H1 and H2 headings matching a known library title are recognized; everything else is preserved verbatim in a custom section. Undo/redo history caps at 50 snapshots, and drafts autosave to IndexedDB via `src/features/readme-builder/drafts.ts`.
 - SQL pages share `src/pages/sql-tools-pages.tsx`, `src/pages/sql-advanced-pages.tsx`, and processing in `src/features/sql.ts`. Formatter uses `/sql/formatter`; Minifier uses `/sql/minify`; Parameters Preview uses `/sql/parameters`; CREATE TABLE → Types uses `/sql/create-table-types`; Syntax Checker uses `/sql/syntax-checker`; INSERT uses `/sql/insert`; IN Builder retains `/formatters/sql-in` and the `sql-in-clause` tool ID/storage key. The old Special Tools category is replaced by SQL.
 - SQL tools support PostgreSQL, MySQL, and SQL Server. IN Builder accepts raw text/UUIDs or numeric literals with explicit line, CSV, or whitespace separators, deduplication, and IN/NOT IN. INSERT accepts flat JSON object arrays or CSV with unique headers; missing JSON fields become NULL, CSV stays text, and empty CSV fields optionally become NULL. Batch size is 1–1000. Unsupported nested values and unsafe JSON integers are rejected. SQL is generated locally, never executed.
 - SQL identifiers and values are escaped per dialect. PostgreSQL backslashes use E-strings; SQL Server uses Unicode N-strings; MySQL uses utf8mb4 literals and hexadecimal conversion for backslash-containing text to avoid SQL-mode ambiguity. Outputs can be copied or downloaded as `.sql` files.
 - Image Resize (`/images/resize`) accepts one PNG, JPEG, or WebP image of up to 20 MiB and 10,000 px per side. It exports a list of up to 10 pixel or percentage sizes sequentially, limiting peak processing memory; each result has its own download. PNG preserves transparency; JPEG output uses a white background because JPEG has no alpha channel. Output dimensions are limited to 10,000 px per side.
+- Screenshot Beautifier (`/images/screenshot-beautifier`) composes a loaded PNG/JPEG/WebP screenshot (up to 20 MiB, 10,000 px per side) with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then exports PNG/JPG at up to 2x pixel density (capped at 4096 px per edge) via `html-to-image`, or copies the PNG to the clipboard. The screenshot and export never leave the browser; only the last-used canvas preset, gradient preset, and frame persist, and only when Remember input is enabled, under the existing `mindskit:input:<key>` mechanism.
 - Parameters Preview accepts JSON arrays for `?`/`$1` and JSON objects for `:name`, skips placeholders inside SQL strings, quoted identifiers, and comments, and exists only for local debugging; it must not be presented as safe substitution for query execution. CREATE TABLE → Types handles one CREATE TABLE statement and common scalar columns; it does not model all dialect-specific DDL. Syntax Checker uses `sql-formatter` parsing for the selected dialect and cannot validate database schema, permissions, or extensions.
 - Additional routes: home `/`, privacy `/privacy`, and license `/license`.
 
@@ -73,6 +75,7 @@ There are 49 registered tools in eight categories. Exact paths and metadata live
 - Pages using `usePersistedInput` store input under `mindskit:input:<key>` only when enabled. Empty input or disabling persistence removes the mounted hook's key. This is not a global purge of every saved tool input.
 - JWT token/secret state and Strong Password Generator output stay in component memory, with Remember input hidden. The JWT decoder also removes its legacy `mindskit:input:jwt-decoder` key on mount. Do not introduce persistence for these sensitive values.
 - Theme preference (`mindskit:theme`) and Quick Actions metadata (`mindskit:quick-actions`: favorites, recent tool IDs, usage counts) persist independently of Remember input. Quick Actions does not store pasted content.
+- README Builder drafts persist independently of Remember input too: `src/features/readme-builder/drafts.ts` autosaves the document to a dedicated IndexedDB database, not the `mindskit:input:<key>` mechanism, so drafts remain saved regardless of the Remember input setting.
 - The processing paths are client-side; local file import reads files in the browser. Preserve this boundary when adding tools or dependencies.
 
 ## Theming
@@ -98,7 +101,7 @@ pnpm test:sql  # SQL and JSON generator regression tests (Node.js 22.18+ or 24+)
 ```
 
 - Use a Node.js version compatible with the installed Vite/package versions.
-- `tests/sql.test.ts` and `tests/json-data-generator.test.ts` use the Node test runner for SQL behavior plus generator schemas, constraints, and unique-value failures. Other tools do not yet have a dedicated automated suite. Lint/build and feature tests do not replace browser checks for tool behavior, storage, file import/download, clipboard, navigation, and responsive/theme behavior.
+- `tests/sql.test.ts` and `tests/json-data-generator.test.ts` use the Node test runner for SQL behavior plus generator schemas, constraints, and unique-value failures. `tests/readme-builder.test.ts` similarly covers the README Builder document model, Markdown render/import, and drafts. Other tools do not yet have a dedicated automated suite. Lint/build and feature tests do not replace browser checks for tool behavior, storage, file import/download, clipboard, navigation, and responsive/theme behavior.
 
 ### Adding or Changing a Tool
 
@@ -113,4 +116,5 @@ pnpm test:sql  # SQL and JSON generator regression tests (Node.js 22.18+ or 24+)
 - Build output is `dist` (`pnpm build`); deploy as a static SPA to Cloudflare Pages or an equivalent static host.
 - `public/_redirects` supplies the SPA routing fallback.
 - `public/_headers` configures CSP and security headers, including same-origin scripts/connections, blocked framing, MIME-sniffing protection, referrer policy, and restricted browser permissions. These files require host support; do not assume every static host or local preview applies them.
+- `img-src` also allows `https://img.shields.io`, a scoped exception for README Builder badge preview images only, not a general allowance for arbitrary external images.
 - Theme initialization uses an external same-origin script compatible with the configured script CSP. Review the header policy when adding runtime resource requirements.
