@@ -60,8 +60,8 @@ Imports may use the `@/` alias for `src/`.
    status controls, formatter/text-transform pages) before creating new ones.
 4. If input persistence is appropriate, use a unique key through the opt-in
    persistence hooks. Consider large-input confirmation for costly work.
-5. Run the relevant automated checks and manually exercise the browser flow,
-   including mobile navigation and both light and dark themes.
+5. Run automated checks only when the user requests them. The user verifies
+   the browser flow, mobile navigation, and light/dark themes manually.
 6. Update `CONTEXT.md` and `README.md` for user-visible behavior changes.
 
 Routes and categories are intentionally not a one-to-one URL model: preserve
@@ -97,16 +97,37 @@ existing legacy paths unless the change explicitly migrates them.
 
 ## Verification expectations
 
-For code changes, run at least `pnpm lint` and `pnpm build`; run
-`pnpm test:sql` whenever SQL, JSON generation, or quick-tool behavior changes.
-Report checks not run and why. Do not claim a browser-only flow is verified
-without exercising it in a browser.
+- Do not run `pnpm lint`, `pnpm build`, `pnpm test:sql`, or any other test or
+  build command unless the user explicitly requests it.
+- Report which checks were not run. Do not claim a browser-only flow is
+  verified without exercising it in a browser.
+- **Testing policy:** Do not create or update automated tests for UI-only work
+  (visual styling, layout, presentation components, or page appearance); the
+  user performs that verification manually. Add automated tests for domain,
+  application, repository, persistence, security-rule, migration, and other
+  non-visual logic. Only change a UI test when the user explicitly asks for it
+  or a UI change also changes non-visual behavior.
+
+## Decisions
+
+- Whenever a decision is required (scope, approach, naming, behavior, trade-offs,
+  or anything not stated in the request), ask the user first. Do not decide on
+  your own.
+
+## Git and releases
+
+- Do not create commits, tags, pushes, or GitHub Releases unless the user
+  explicitly requests the action.
+- Never run `git push` (branches, tags, or `--force`) or create a GitHub
+  Release. Prepare the commit or tag locally, then hand the user the exact
+  push/release command to run.
+- Never add AI/agent attribution to commits, tags, pull requests, or release
+  notes (for example `Co-Authored-By: Claude …` or "Generated with …"). GitHub
+  counts co-author trailers as repository contributors, and a pushed trailer
+  cannot be removed without rewriting history.
 
 ## Git Commit Message
 
-- For clear, small, low-risk changes within the current workspace, implement immediately.
-- Do not ask for confirmation for cosmetic UI, copy, or styling changes when the requested scope is explicit.
-- Ask first only when scope is ambiguous, an action is destructive or irreversible, adds dependencies, changes external services, or affects data outside the workspace.
 - After completing code changes:
   - Summarize what changed.
   - List important files changed.
