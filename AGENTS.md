@@ -92,6 +92,10 @@ existing legacy paths unless the change explicitly migrates them.
 - `AppShell` deliberately forms a stacking context so the fixed decorative
   `src/assets/bg.png` remains behind content. Keep the asset decorative,
   bottom-aligned, and legible rather than turning it into a viewport cover.
+- Follow `docs/animation.md` for any animation: keep it opt-in per feature,
+  use `MotionProvider`/`m.*` and the presets in `src/lib/motion.ts`, never
+  stack Motion `layout` or AutoAnimate on `@dnd-kit` sortable items, and
+  always provide a reduced-motion fallback.
 - Preserve the 10 MiB `CodeEditor` import limit and language-specific file
   filtering unless a tool has an explicit reason to change them.
 
