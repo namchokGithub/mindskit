@@ -25,6 +25,17 @@
 .markdown-preview th, .markdown-preview td { border: 1px solid var(--border); padding: 0.375rem 0.625rem; text-align: left; }
 .markdown-preview th { background: var(--muted); font-weight: 600; }
 
+/* Small horizontal shake for invalid fields; pair with motion-reduce:animate-none. */
+@keyframes mk-shake {
+  0%, 100% { translate: 0; }
+  25% { translate: -2px; }
+  75% { translate: 2px; }
+}
+
+@utility animate-shake {
+  animation: mk-shake 220ms ease-in-out 1;
+}
+
 .sidebar-tool-active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 13%, transparent), color-mix(in srgb, var(--brand-secondary) 8%, transparent));
   box-shadow: inset 3px 0 0 var(--primary), 0 8px 18px -16px var(--primary);
