@@ -272,7 +272,6 @@ export const tools: ToolDefinition[] = [
     category: "text-tools",
     path: "/text-tools/readme-builder",
     icon: BookOpen,
-    isNew: true,
   },
 
   // Encode / Decode
@@ -425,6 +424,7 @@ export const tools: ToolDefinition[] = [
     category: "converters",
     path: "/converters/color",
     icon: Palette,
+    isNew: true,
   },
   {
     id: "date-formatter",
@@ -477,7 +477,6 @@ export const tools: ToolDefinition[] = [
     category: "images",
     path: "/images/screenshot-beautifier",
     icon: Sparkles,
-    isNew: true,
   },
 ];
 
