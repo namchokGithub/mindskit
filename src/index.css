@@ -79,7 +79,8 @@ main :is(section, div):has(> [aria-label]) > div:first-child {
     max-height: 560px;
   }
 
-  .formatter-workspace {
+  .formatter-workspace,
+  .text-transform-workspace {
     max-height: none;
   }
 }
