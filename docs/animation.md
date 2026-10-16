@@ -159,6 +159,8 @@ Motion and dnd-kit both write `transform`, so give each its own element:
 
 ### Icon state swap (Copy → Check)
 
+The shared `CopyButton` already pops its Check icon with CSS (`animate-in zoom-in-50 spin-in-12`), so use it as-is for copy actions. Use the Motion version below only inside a `MotionProvider` feature that needs a custom button.
+
 ```tsx
 <AnimatePresence mode="wait" initial={false}>
   <m.span key={copied ? "check" : "copy"} variants={popVariants} initial="hidden" animate="show" exit="exit" className="inline-flex">
