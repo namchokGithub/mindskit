@@ -70,7 +70,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - JSON ↔ XML conversion
 - Number Base Converter for binary, octal, decimal, and hexadecimal values
 - Letters ↔ Numbers for A1Z26, reverse alphabet, printable ASCII, and Roman numeral mappings
-- Color Converter for HEX, RGB, and HSL formats
+- Color Converter for HEX, RGB, and HSL formats, plus a palette builder that extracts named HEX colors from pasted text and lets you add, edit, and copy up to 20 colors
 - Date Formatter for common date-time formats and time zones
 - Roman Numeral Date Converter for Gregorian `YYYY-MM-DD` / `DD/MM/YYYY` dates and `DD/MM/YYYY` Roman numeral dates
 
