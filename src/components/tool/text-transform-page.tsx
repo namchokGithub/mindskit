@@ -132,7 +132,7 @@ export function TextTransformPage(config: TextTransformPageConfig) {
           <Button type="button" variant="outline" size="sm" aria-pressed={wrap} onClick={() => setWrap((value) => !value)} className={cn(wrap && 'bg-accent text-accent-foreground')}><WrapText />Wrap</Button>
         </div>
 
-        <div className="text-transform-workspace tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <div className="tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="flex min-h-65 min-w-0 flex-col bg-editor/40 lg:min-h-0">
             <div className="flex items-center justify-between gap-2 px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Input</span><TextStats value={input} /></div>
             <CodeEditor bare value={input} onChange={handleInputChange} placeholder={config.inputPlaceholder} wrap={wrap} ariaLabel="Input" language={config.language ?? 'text'} fitContent />

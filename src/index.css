@@ -76,12 +76,6 @@ main :is(section, div):has(> [aria-label]) > div:first-child {
 @media (min-width: 1024px) {
   .tool-workspace-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    max-height: 560px;
-  }
-
-  .formatter-workspace,
-  .text-transform-workspace {
-    max-height: none;
   }
 }
 
