@@ -58,6 +58,7 @@ export function decorateText(input: string, mode: string, prefix = '', suffix = 
 const markdownLinePrefix = /^(\s*(?:>\s*)*(?:#{1,6}\s+|(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)?)(.*)$/
 
 export function formatMarkdown(input: string, mode: string): string {
+  if (mode === 'none') return input
   const marker = mode === 'italic' ? '_' : '**'
   return input
     .split(/(\r?\n)/)
