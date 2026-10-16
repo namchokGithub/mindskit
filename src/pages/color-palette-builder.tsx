@@ -1,4 +1,21 @@
-import { Check, Copy, Eraser, FileText, Pipette, Plus, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Check, Copy, Eraser, FileText, GripVertical, Pipette, Plus, Trash2 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { CopyButton } from "@/components/tool/copy-button";
@@ -73,6 +90,20 @@ export function ColorPaletteBuilder({ converter }: { converter: ReactNode }) {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
 
   const removeItem = (id: number) => setItems((current) => current.filter((item) => item.id !== id));
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    setItems((current) => {
+      const from = current.findIndex((item) => item.id === active.id);
+      const to = current.findIndex((item) => item.id === over.id);
+      return from === -1 || to === -1 ? current : arrayMove(current, from, to);
+    });
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
@@ -155,17 +186,21 @@ export function ColorPaletteBuilder({ converter }: { converter: ReactNode }) {
                 />
               ))}
             </div>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-              {items.map((item, index) => (
-                <PaletteCard
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  onChange={(patch) => updateItem(item.id, patch)}
-                  onRemove={() => removeItem(item.id)}
-                />
-              ))}
-            </ul>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={items.map((item) => item.id)} strategy={rectSortingStrategy}>
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                  {items.map((item, index) => (
+                    <PaletteCard
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      onChange={(patch) => updateItem(item.id, patch)}
+                      onRemove={() => removeItem(item.id)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
           </>
         )}
       </section>
@@ -187,14 +222,34 @@ function PaletteCard({
   const valid = isValidHexColor(item.hex);
   const hex = valid ? normalizeHexColor(item.hex) : "";
   const label = item.name.trim() || `Color ${index + 1}`;
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  });
 
   return (
-    <li className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm",
+        isDragging && "relative z-10 opacity-80 shadow-lg ring-2 ring-ring",
+      )}>
       <div
-        className={cn("flex h-28 items-end justify-between gap-2 p-3", !valid && "bg-muted text-muted-foreground")}
+        className={cn("flex h-28 flex-col justify-between gap-2 p-3", !valid && "bg-muted text-muted-foreground")}
         style={valid ? { backgroundColor: hex, color: readableTextColor(hex) } : undefined}>
-        <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
-        <span className="shrink-0 font-mono text-xs">{valid ? hex : "Invalid"}</span>
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${label}`}
+          className="-m-1 flex size-7 cursor-grab touch-none items-center justify-center self-start rounded-md opacity-70 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing">
+          <GripVertical className="size-4" />
+        </button>
+        <div className="flex items-end justify-between gap-2">
+          <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
+          <span className="shrink-0 font-mono text-xs">{valid ? hex : "Invalid"}</span>
+        </div>
       </div>
       <div className="flex flex-col gap-2 p-3">
         <input
