@@ -1,6 +1,6 @@
 export function exportScreenshotFileName(originalFileName: string | null, extension: 'png' | 'jpg'): string {
   if (!originalFileName) return `mindskit-screenshot.${extension}`
-  const base = originalFileName.replace(/\.[^./]+$/, '') || 'screenshot'
+  const base = originalFileName.replace(/\.(png|jpe?g|webp|gif|bmp|avif|heic|heif|svg|tiff?)$/i, '') || 'screenshot'
   return `${base}-beautified.${extension}`
 }
 
