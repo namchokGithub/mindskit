@@ -164,6 +164,7 @@ function fromHsl(input: string): Rgba | null {
   const match = input.trim().match(/^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+\s*([\d.]+)%[,\s]+\s*([\d.]+)%(?:\s*[,/]\s*([\d.]+))?\s*\)$/i)
   if (!match) return null
   const [rawHue, rawSaturation, rawLightness, rawAlpha = 1] = match.slice(1).map(Number)
+  if (![rawHue, rawSaturation, rawLightness, rawAlpha].every(Number.isFinite)) return null
   if (rawSaturation > 100 || rawLightness > 100 || rawAlpha < 0 || rawAlpha > 1) return null
   const hue = ((rawHue % 360) + 360) % 360 / 360
   const saturation = rawSaturation / 100
