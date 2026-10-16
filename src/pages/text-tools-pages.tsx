@@ -1,5 +1,6 @@
 import { AlignLeft, Bold, Combine, Eraser, Heading, SplitSquareHorizontal } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import { TextTransformPage } from '@/components/tool/text-transform-page'
 import { decorateText, formatMarkdown, joinText, removeSpaces, splitText, textOperations } from '@/features/text-tools/text'
@@ -17,7 +18,7 @@ export function TextDecorationPage() {
 }
 
 export function MarkdownPage() {
-  return <TextTransformPage title="Markdown" description="Apply Markdown emphasis and see the rendered result instantly." actionLabel="Apply" actionIcon={Heading} storageKey="markdown" inputPlaceholder="Paste text here…" sample="Make this stand out" process={formatMarkdown} operations={[{ label: 'Bold', value: 'bold' }, { label: 'Italic', value: 'italic' }]} language="markdown" outputPreview={(output) => <div className="markdown-preview"><ReactMarkdown>{output}</ReactMarkdown></div>} />
+  return <TextTransformPage title="Markdown" description="Apply Markdown emphasis and see the rendered result instantly." actionLabel="Apply" actionIcon={Heading} storageKey="markdown" inputPlaceholder="Paste text here…" sample="Make this stand out" process={formatMarkdown} operations={[{ label: 'Bold', value: 'bold' }, { label: 'Italic', value: 'italic' }]} language="markdown" outputPreview={(output) => <div className="markdown-preview"><ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown></div>} />
 }
 
 export function SplitTextPage() {
