@@ -114,7 +114,7 @@ export function FormatterPage(config: FormatterPageConfig) {
           </Button>
         </div>
 
-        <div className="formatter-workspace tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <div className="tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="flex min-h-65 min-w-0 flex-col bg-editor/40 lg:min-h-0">
             <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-1.5">
               <span className="text-sm font-medium text-muted-foreground">

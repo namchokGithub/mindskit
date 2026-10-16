@@ -11,7 +11,7 @@
 
 > A privacy-first developer toolbox that runs entirely in your browser.
 
-![Version](https://img.shields.io/badge/version-0.2.2-ad60fb?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.0-ad60fb?style=flat-square)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)](https://vite.dev/)
 
 MindsKit is a focused collection of tools for formatting data, transforming text, encoding values, and generating identifiers. Paste your content, process it locally, and copy the result—nothing is uploaded to a server.
@@ -70,7 +70,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - JSON ↔ XML conversion
 - Number Base Converter for binary, octal, decimal, and hexadecimal values
 - Letters ↔ Numbers for A1Z26, reverse alphabet, printable ASCII, and Roman numeral mappings
-- Color Converter for HEX, RGB, and HSL formats
+- Color Converter for HEX, RGB, and HSL formats, plus a palette builder that extracts named HEX colors from pasted text and lets you add, edit, and copy up to 20 colors
 - Date Formatter for common date-time formats and time zones
 - Roman Numeral Date Converter for Gregorian `YYYY-MM-DD` / `DD/MM/YYYY` dates and `DD/MM/YYYY` Roman numeral dates
 

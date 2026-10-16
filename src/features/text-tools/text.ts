@@ -55,8 +55,21 @@ export function decorateText(input: string, mode: string, prefix = '', suffix = 
   }
 }
 
+const markdownLinePrefix = /^(\s*(?:>\s*)*(?:#{1,6}\s+|(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)?)(.*)$/
+
 export function formatMarkdown(input: string, mode: string): string {
-  return mode === 'italic' ? `_${input}_` : `**${input}**`
+  if (mode === 'none') return input
+  const marker = mode === 'italic' ? '_' : '**'
+  return input
+    .split(/(\r?\n)/)
+    .map((part) => {
+      if (/^\r?\n$/.test(part)) return part
+      const [, prefix = '', content = ''] = part.match(markdownLinePrefix) ?? []
+      const text = content.trim()
+      if (!text) return part
+      return `${prefix}${marker}${text}${marker}${content.slice(content.trimEnd().length)}`
+    })
+    .join('')
 }
 
 export function splitText(input: string, delimiter: string): string {

@@ -139,7 +139,9 @@ export function ScreenshotBeautifierPage() {
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
       toast.success(`Exported ${filename}`);
     } catch {
       toast.error("Failed to export this screenshot.");
