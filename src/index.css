@@ -36,6 +36,17 @@
   animation: mk-shake 220ms ease-in-out 1;
 }
 
+/* Quarter turn with a slight bump for a "shuffle" icon after Generate; pair with motion-reduce:animate-none. */
+@keyframes mk-shuffle {
+  0% { rotate: 0deg; scale: 1; }
+  50% { scale: 1.15; }
+  100% { rotate: 180deg; scale: 1; }
+}
+
+@utility animate-shuffle {
+  animation: mk-shuffle 300ms ease-out 1;
+}
+
 .sidebar-tool-active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 13%, transparent), color-mix(in srgb, var(--brand-secondary) 8%, transparent));
   box-shadow: inset 3px 0 0 var(--primary), 0 8px 18px -16px var(--primary);

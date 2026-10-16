@@ -1,5 +1,5 @@
-import { Binary, ChevronDown, Clock, FileCode, Link2, Shuffle, TimerReset } from 'lucide-react'
-import { useState } from 'react'
+import { Binary, Check, ChevronDown, Clock, Copy, FileCode, Link2, Shuffle, TimerReset } from 'lucide-react'
+import { useRef, useState } from 'react'
 
 import { TextTransformPage } from '@/components/tool/text-transform-page'
 import { CodeEditor } from '@/components/tool/code-editor'
@@ -9,6 +9,8 @@ import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useCopy } from '@/hooks/use-copy'
+import { cn } from '@/lib/utils'
 import { convertBase64, convertHtml, convertTimestamp, convertUrl, currentUnixTimestamp, quickOperations } from '@/features/quick-tools'
 
 export function Base64Page() {
@@ -27,15 +29,43 @@ export function UnixTimestampPage() {
   return <TextTransformPage title="Unix Timestamp" description="Convert between Unix timestamps and ISO date/time values." actionLabel="Convert" actionIcon={TimerReset} storageKey="unix-timestamp" inputPlaceholder="Enter a timestamp or date…" sample="1704067200" samples={{ 'to-date': '1704067200', 'to-timestamp': '2024-01-01T00:00:00.000Z' }} process={convertTimestamp} operations={[...quickOperations.timestamp]} timeZone inputAction={{ label: 'Now', icon: Clock, value: currentUnixTimestamp }} />
 }
 
+const uuidCountPresets = ['1', '5', '10']
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function UuidPage() {
   const [count, setCount] = useState('1')
   const [output, setOutput] = useState('')
+  const [run, setRun] = useState(0)
+  const resultRef = useRef<HTMLDivElement>(null)
+  const parsedCount = Number(count)
+  const countIsValid = Number.isInteger(parsedCount) && parsedCount >= 1 && parsedCount <= 200
+  const presetIndex = uuidCountPresets.indexOf(count)
   const generate = () => {
-    const total = Math.max(1, Math.min(200, Number(count) || 1))
+    const total = Math.max(1, Math.min(200, Math.trunc(parsedCount) || 1))
     setOutput(Array.from({ length: total }, () => crypto.randomUUID()).join('\n'))
+    setRun((value) => value + 1)
+    // Brief fade/blur so a regenerated result reads as new; animates opacity/filter only, never the editor size.
+    if (!prefersReducedMotion()) resultRef.current?.animate([{ opacity: 0.35, filter: 'blur(2px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 220, easing: 'ease-out' })
   }
 
-  return <div className="flex min-h-0 flex-col gap-4 lg:h-full"><ToolPageHeader title="UUID" description="Generate one or more random UUID v4 values in your browser." /><div className="flex shrink-0 flex-wrap items-end gap-2"><div className="flex items-center gap-1 rounded-lg border border-input p-1"><Button type="button" size="sm" variant={count === '1' ? 'secondary' : 'ghost'} onClick={() => setCount('1')}>1</Button><Button type="button" size="sm" variant={count === '5' ? 'secondary' : 'ghost'} onClick={() => setCount('5')}>5</Button><Button type="button" size="sm" variant={count === '10' ? 'secondary' : 'ghost'} onClick={() => setCount('10')}>10</Button></div><label className="space-y-1 text-xs text-muted-foreground">Custom (max 200)<input type="number" min="1" max="200" value={count} onChange={(event) => setCount(event.target.value)} className="mt-1 block h-8 w-28 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50" /></label><Button onClick={generate}><Shuffle />Generate</Button></div><div className="flex min-h-65 flex-1 flex-col gap-2"><div className="flex items-center justify-between"><span className="text-sm font-medium text-muted-foreground">Result</span><CopyButton value={output} /></div><CodeEditor value={output} readOnly placeholder="Your generated UUIDs will appear here." wrap ariaLabel="Result" language="text" /></div><ToolStatus state={output ? 'valid' : 'idle'} validLabel="UUIDs generated successfully" /></div>
+  return <div className="flex min-h-0 flex-col gap-4 lg:h-full"><ToolPageHeader title="UUID" description="Generate one or more random UUID v4 values in your browser." /><div className="flex shrink-0 flex-wrap items-end gap-2">
+    <div className="relative grid grid-cols-3 gap-1 rounded-lg border border-input p-1" role="group" aria-label="UUID count presets">
+      <span aria-hidden="true" className={cn('absolute inset-y-1 left-1 w-[calc((100%-1rem)/3)] rounded-md bg-secondary shadow-sm transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-none', presetIndex === -1 && 'opacity-0')} style={{ translate: `calc(${Math.max(presetIndex, 0)} * (100% + 0.25rem)) 0` }} />
+      {uuidCountPresets.map((preset) => <Button key={preset} type="button" size="sm" variant="ghost" aria-pressed={count === preset} onClick={() => setCount(preset)} className={cn('relative z-10 min-w-9 hover:bg-transparent dark:hover:bg-transparent aria-pressed:text-secondary-foreground', count !== preset && 'text-muted-foreground hover:text-foreground')}>{preset}</Button>)}
+    </div>
+    <label className="space-y-1 text-xs text-muted-foreground">Custom (max 200)<input type="number" min="1" max="200" value={count} onChange={(event) => setCount(event.target.value)} aria-invalid={!countIsValid} aria-describedby={countIsValid ? undefined : 'uuid-count-hint'} className="mt-1 block h-8 w-28 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 aria-invalid:animate-shake aria-invalid:border-destructive aria-invalid:ring-destructive/20 motion-reduce:animate-none" /></label>
+    <Button onClick={generate}><Shuffle key={run} className={cn(run > 0 && 'animate-shuffle motion-reduce:animate-none')} />Generate</Button>
+    {!countIsValid && <p id="uuid-count-hint" className="basis-full animate-in text-xs text-destructive fade-in slide-in-from-top-1 duration-200">Use a whole number from 1 to 200. Generate will use {Math.max(1, Math.min(200, Math.trunc(parsedCount) || 1))}.</p>}
+  </div><div className="flex min-h-65 flex-1 flex-col gap-2"><div className="flex items-center justify-between"><span className="text-sm font-medium text-muted-foreground">Result</span><UuidCopyButton value={output} /></div><div ref={resultRef} className="flex min-h-0 flex-1 flex-col"><CodeEditor value={output} readOnly placeholder="Your generated UUIDs will appear here." wrap ariaLabel="Result" language="text" /></div></div><ToolStatus key={run} state={output ? 'valid' : 'idle'} validLabel="UUIDs generated successfully" /></div>
+}
+
+/** Local Copy button for the UUID page: the Check icon pops in after copying. */
+function UuidCopyButton({ value }: { value: string }) {
+  const { copied, copy } = useCopy()
+  return <Button type="button" variant="outline" size="sm" disabled={!value} onClick={() => copy(value)}>{copied ? <Check className="animate-in text-success zoom-in-50 spin-in-12 duration-200 motion-reduce:animate-none" /> : <Copy />}Copy</Button>
 }
 
 export function RandomStringPage() {
