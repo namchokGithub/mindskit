@@ -2,7 +2,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
-import mindskitLogo from "@/assets/mindskit.png";
+import mindskitLogo from "@/assets/purple-slime-mechanic-128x128.png";
 import appBackground from "@/assets/bg.png";
 import { Footer } from "@/components/layout/footer";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -113,7 +113,7 @@ export function AppShell() {
             <img src={mindskitLogo} alt="" className="size-9 object-contain" />
             MindsKit
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              v1.0.0
+              v1.1.0
             </span>
           </Link>
 
