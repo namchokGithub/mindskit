@@ -76,7 +76,8 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 
 ### Image tools
 
-- Image Resize for PNG, JPEG, and WebP: export one uploaded image at multiple pixel or percentage sizes, processed sequentially in the browser, with an individual download for every result
+- Image Resize & Convert for PNG, JPEG, and WebP: export one uploaded image at multiple pixel or percentage sizes, or convert it between formats, processed sequentially in the browser, with an individual download for every result
+- Favicon Generator: create a `favicon.ico` containing 16, 32, and 48 px icons from a PNG, JPEG, or WebP image
 - Image Crop with freeform and preset aspect ratios
 - Remove Background using an in-browser AI model
 - Screenshot Beautifier: compose a PNG/JPEG/WebP screenshot with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then export PNG/JPG at up to 2x resolution or copy the result to the clipboard

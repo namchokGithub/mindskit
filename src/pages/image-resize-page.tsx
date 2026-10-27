@@ -8,7 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   calculateResizeDimensions,
   canAddResizeJob,
+  encoderFallbackMessage,
   exportResizeFileName,
+  resolveExportedMimeType,
   resolveResizeMimeType,
   resolvePixelResizeDimensions,
   resizeToBlob,
@@ -69,6 +71,7 @@ export function ImageResizePage() {
   const [quality, setQuality] = useState('90')
   const [results, setResults] = useState<ResizeResult[]>([])
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
   const [progress, setProgress] = useState<number | null>(null)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
 
@@ -78,6 +81,7 @@ export function ImageResizePage() {
   const clearResults = () => {
     results.forEach((result) => URL.revokeObjectURL(result.url))
     setResults([])
+    setWarning('')
   }
 
   const handleFile = (nextFile: File) => {
@@ -143,7 +147,10 @@ export function ImageResizePage() {
         const item = planned[index]
         if (!item.size) continue
         const blob = await resizeToBlob(imageRef.current, item.size, mimeType, exportQuality)
-        const result = { id: item.job.id, size: item.size, filename: exportResizeFileName(file.name, item.size, mimeType), url: URL.createObjectURL(blob), bytes: blob.size }
+        const exportedMimeType = resolveExportedMimeType(mimeType, blob.type)
+        const fallback = encoderFallbackMessage(mimeType, exportedMimeType)
+        if (fallback) setWarning(fallback)
+        const result = { id: item.job.id, size: item.size, filename: exportResizeFileName(file.name, item.size, exportedMimeType), url: URL.createObjectURL(blob), bytes: blob.size }
         setResults((current) => [...current, result])
         setProgress(index + 1)
       }
@@ -159,7 +166,7 @@ export function ImageResizePage() {
 
   return (
     <div className="flex min-h-0 flex-col gap-4 lg:h-full">
-      <ToolPageHeader title="Image Resize" description="Export one PNG, JPEG, or WebP image at multiple sizes entirely in your browser." showRememberInput={false} />
+      <ToolPageHeader title="Image Resize & Convert" description="Resize one PNG, JPEG, or WebP image to multiple sizes, or convert it between PNG, JPEG, and WebP, entirely in your browser." showRememberInput={false} />
 
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         <Button type="button" onClick={() => inputRef.current?.click()} disabled={progress !== null}>
@@ -171,6 +178,7 @@ export function ImageResizePage() {
       </div>
 
       <ToolStatus state={error ? 'invalid' : results.length ? 'valid' : 'idle'} message={error || undefined} validLabel={`Exported ${results.length} size${results.length === 1 ? '' : 's'} successfully`} />
+      {warning && <p role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-3.5 py-2.5 text-sm text-warning">{warning}</p>}
 
       {!file ? (
         <button

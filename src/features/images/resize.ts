@@ -86,6 +86,20 @@ export function resolveResizeMimeType(inputType: string, format: ResizeFormat): 
   return `image/${format}`
 }
 
+/**
+ * Canvas silently falls back to PNG when a browser cannot encode the requested type (Safari cannot encode WebP).
+ * Returns the MIME type actually produced, so file names match the bytes.
+ */
+export function resolveExportedMimeType(requestedMimeType: string, blobType: string): string {
+  return EXPORTABLE_MIME_TYPES.has(blobType) ? blobType : requestedMimeType
+}
+
+export function encoderFallbackMessage(requestedMimeType: string, exportedMimeType: string): string | null {
+  if (requestedMimeType === exportedMimeType) return null
+  const label = (mimeType: string) => (mimeType === 'image/jpeg' ? 'JPEG' : mimeType === 'image/webp' ? 'WebP' : 'PNG')
+  return `This browser cannot export ${label(requestedMimeType)}, so the files were saved as ${label(exportedMimeType)}. Use Chrome, Edge, or Firefox for ${label(requestedMimeType)} output.`
+}
+
 export function exportResizeFileName(originalName: string, size: ImageSize, mimeType: string): string {
   const base = originalName.replace(/\.[^./]+$/, '') || 'image'
   const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png'

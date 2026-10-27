@@ -24,6 +24,7 @@ import { JwtDecoderPage } from '@/pages/jwt-decoder-page'
 import { BarcodePage, QrCodePage } from '@/pages/code-generators-pages'
 import { JsonToCsvPage, JsonToYamlPage } from '@/pages/json-converters-pages'
 import { JsonDataGeneratorPage } from '@/pages/json-data-generator-page'
+import { FaviconGeneratorPage } from '@/pages/favicon-generator-page'
 import { ImageCropPage } from '@/pages/image-crop-page'
 import { ImageResizePage } from '@/pages/image-resize-page'
 
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="/converters/roman-numeral-date" element={<RomanNumeralDatePage />} />
           <Route path="/images/crop" element={<ImageCropPage />} />
           <Route path="/images/resize" element={<ImageResizePage />} />
+          <Route path="/images/favicon-generator" element={<FaviconGeneratorPage />} />
           <Route
             path="/images/remove-background"
             element={
