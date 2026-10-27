@@ -1,5 +1,6 @@
 import {
   AlignLeft,
+  AppWindow,
   Barcode,
   Binary,
   Bold,
@@ -446,8 +447,9 @@ export const tools: ToolDefinition[] = [
   // Images
   {
     id: "image-resize",
-    name: "Image Resize",
-    description: "Export one image at multiple sizes entirely in your browser.",
+    name: "Image Resize & Convert",
+    description:
+      "Resize an image to multiple sizes or convert it between PNG, JPEG, and WebP in your browser.",
     category: "images",
     path: "/images/resize",
     icon: Shrink,
@@ -477,6 +479,14 @@ export const tools: ToolDefinition[] = [
     category: "images",
     path: "/images/screenshot-beautifier",
     icon: Sparkles,
+  },
+  {
+    id: "favicon-generator",
+    name: "Favicon Generator",
+    description: "Create a favicon.ico with 16, 32, and 48 px icons from an image in your browser.",
+    category: "images",
+    path: "/images/favicon-generator",
+    icon: AppWindow,
   },
 ];
 

@@ -3,7 +3,9 @@ import test from 'node:test'
 
 import {
   calculateResizeDimensions,
+  encoderFallbackMessage,
   exportResizeFileName,
+  resolveExportedMimeType,
   resolveResizeMimeType,
   validateImageForResize,
   validateResizeDimensions,
@@ -67,4 +69,13 @@ test('rejects an output dimension beyond the canvas safety limit', () => {
 test('allows adding sizes only until the export list reaches ten items', () => {
   assert.equal(resize.canAddResizeJob?.(9), true)
   assert.equal(resize.canAddResizeJob?.(10), false)
+})
+
+test('names exports after the type the browser actually encoded', () => {
+  assert.equal(resolveExportedMimeType('image/webp', 'image/webp'), 'image/webp')
+  assert.equal(resolveExportedMimeType('image/webp', 'image/png'), 'image/png')
+  assert.equal(resolveExportedMimeType('image/jpeg', ''), 'image/jpeg')
+  assert.equal(exportResizeFileName('logo.png', { width: 64, height: 64 }, resolveExportedMimeType('image/webp', 'image/png')), 'logo-64x64.png')
+  assert.equal(encoderFallbackMessage('image/webp', 'image/webp'), null)
+  assert.match(encoderFallbackMessage('image/webp', 'image/png') ?? '', /cannot export WebP, so the files were saved as PNG/)
 })
