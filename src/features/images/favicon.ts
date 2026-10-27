@@ -36,7 +36,7 @@ export function downscaleSteps(from: number, to: number): number[] {
  * Packs PNG images into an ICO container. Each entry stores PNG data directly, which every current browser and
  * Windows Vista+ supports. Sizes must be 1–256 px.
  */
-export function encodeIco(images: { size: number; png: Uint8Array }[]): Uint8Array {
+export function encodeIco(images: { size: number; png: Uint8Array }[]): Uint8Array<ArrayBuffer> {
   if (images.length === 0) throw new Error('An ICO file needs at least one image.')
   const headerSize = 6
   const entrySize = 16
