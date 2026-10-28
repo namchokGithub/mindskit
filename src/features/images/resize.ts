@@ -69,6 +69,24 @@ export function resolvePixelResizeDimensions(original: ImageSize, input: PixelRe
   return calculateResizeDimensions(original, { mode: 'pixels', ...input })
 }
 
+export function initialPixelResizeInputs(original: ImageSize, width: string, height: string): { width: string; height: string } {
+  if (width !== '' || height !== '') return { width, height }
+  return { width: String(original.width), height: String(original.height) }
+}
+
+export function lockPixelResizeInputs(original: ImageSize, width: string, height: string): { width: string; height: string } {
+  const numericWidth = Number(width)
+  const numericHeight = Number(height)
+  const changedDimension = width.trim() !== '' && Number.isFinite(numericWidth) && numericWidth > 0 ? 'width' : 'height'
+  const size = resolvePixelResizeDimensions(original, {
+    width: numericWidth,
+    height: numericHeight,
+    keepAspectRatio: true,
+    changedDimension,
+  }) ?? original
+  return { width: String(size.width), height: String(size.height) }
+}
+
 export function validateImageForResize(file: ImageFileMetadata): string | null {
   if (!EXPORTABLE_MIME_TYPES.has(file.type)) return 'Choose a PNG, JPEG, or WebP image.'
   if (file.size > MAX_FILE_SIZE) return 'Images must be 20 MiB or smaller.'
