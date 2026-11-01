@@ -89,14 +89,162 @@ export function exportFileName(originalName: string, mimeType: string): string {
   return `${base}-cropped.${extension}`
 }
 
-export function cropToBlob(source: CanvasImageSource, rect: CropRect, mimeType: string, quality?: number): Promise<Blob> {
+export interface ImageTransform {
+  /** Clockwise 90° turns, 0–3. */
+  quarterTurns: number
+  /** Free rotation in degrees, −45 to 45, applied on top of the quarter turns. */
+  angle: number
+  flipH: boolean
+  flipV: boolean
+}
+
+export const IDENTITY_TRANSFORM: ImageTransform = { quarterTurns: 0, angle: 0, flipH: false, flipV: false }
+
+export const MAX_FREE_ANGLE = 45
+
+export function normalizeQuarterTurns(turns: number): number {
+  return ((Math.round(turns) % 4) + 4) % 4
+}
+
+export function clampFreeAngle(angle: number): number {
+  if (!Number.isFinite(angle)) return 0
+  return Math.min(MAX_FREE_ANGLE, Math.max(-MAX_FREE_ANGLE, angle))
+}
+
+/** Total clockwise rotation in degrees. */
+export function totalRotation(transform: ImageTransform): number {
+  return normalizeQuarterTurns(transform.quarterTurns) * 90 + clampFreeAngle(transform.angle)
+}
+
+/** Size of the axis-aligned box that holds the whole rotated image. */
+export function rotatedBoundingSize(size: ImageBounds, degrees: number): ImageBounds {
+  const radians = (degrees * Math.PI) / 180
+  const sin = Math.abs(Math.sin(radians))
+  const cos = Math.abs(Math.cos(radians))
+  return {
+    width: Math.max(1, Math.round(size.width * cos + size.height * sin)),
+    height: Math.max(1, Math.round(size.width * sin + size.height * cos)),
+  }
+}
+
+/**
+ * Largest axis-aligned rectangle that fits inside the rotated image, centered in its bounding box. Crops are limited to
+ * this area so an export never contains empty corners.
+ */
+export function maxInscribedRect(size: ImageBounds, degrees: number): CropRect {
+  const bounding = rotatedBoundingSize(size, degrees)
+  const radians = (degrees * Math.PI) / 180
+  const sin = Math.abs(Math.sin(radians))
+  const cos = Math.abs(Math.cos(radians))
+  const widthIsLonger = size.width >= size.height
+  const longSide = widthIsLonger ? size.width : size.height
+  const shortSide = widthIsLonger ? size.height : size.width
+  let width: number
+  let height: number
+
+  if (shortSide <= 2 * sin * cos * longSide || Math.abs(sin - cos) < 1e-10) {
+    const half = shortSide / 2
+    width = widthIsLonger ? half / sin : half / cos
+    height = widthIsLonger ? half / cos : half / sin
+  } else {
+    const cos2 = cos * cos - sin * sin
+    width = (size.width * cos - size.height * sin) / cos2
+    height = (size.height * cos - size.width * sin) / cos2
+  }
+
+  const roundedWidth = Math.max(1, Math.min(bounding.width, Math.floor(width + 1e-6)))
+  const roundedHeight = Math.max(1, Math.min(bounding.height, Math.floor(height + 1e-6)))
+  return {
+    x: Math.ceil((bounding.width - roundedWidth) / 2),
+    y: Math.ceil((bounding.height - roundedHeight) / 2),
+    width: Math.min(roundedWidth, bounding.width - Math.ceil((bounding.width - roundedWidth) / 2)),
+    height: Math.min(roundedHeight, bounding.height - Math.ceil((bounding.height - roundedHeight) / 2)),
+  }
+}
+
+/** Sets the crop box to an exact width × height (pixels), keeping its center, then clamps it to the bounds. */
+export function resizeCropToDimensions(
+  rect: CropRect,
+  dimensions: { width?: number; height?: number },
+  ratio: number | null,
+  bounds: ImageBounds,
+): CropRect {
+  let width = dimensions.width ?? rect.width
+  let height = dimensions.height ?? rect.height
+  if (ratio) {
+    if (dimensions.height !== undefined && dimensions.width === undefined) width = height * ratio
+    else height = width / ratio
+  }
+  const centerX = rect.x + rect.width / 2
+  const centerY = rect.y + rect.height / 2
+  return applyAspectRatio({ x: centerX - width / 2, y: centerY - height / 2, width, height }, ratio, bounds)
+}
+
+export interface OutputSizePreset {
+  id: string
+  group: string
+  label: string
+  width: number
+  height: number
+}
+
+export const OUTPUT_SIZE_PRESETS: OutputSizePreset[] = [
+  { id: 'instagram-post', group: 'Social', label: 'Instagram post', width: 1080, height: 1080 },
+  { id: 'instagram-portrait', group: 'Social', label: 'Instagram portrait', width: 1080, height: 1350 },
+  { id: 'story', group: 'Social', label: 'Story / Reel', width: 1080, height: 1920 },
+  { id: 'og-image', group: 'Social', label: 'Facebook / LinkedIn / OG image', width: 1200, height: 630 },
+  { id: 'x-post', group: 'Social', label: 'X post', width: 1600, height: 900 },
+  { id: 'hd', group: 'Screen / video', label: 'HD', width: 1280, height: 720 },
+  { id: 'full-hd', group: 'Screen / video', label: 'Full HD', width: 1920, height: 1080 },
+  { id: '4k', group: 'Screen / video', label: '4K', width: 3840, height: 2160 },
+  { id: 'avatar', group: 'Avatar / icon', label: 'Avatar', width: 400, height: 400 },
+  { id: 'youtube-thumbnail', group: 'Avatar / icon', label: 'YouTube thumbnail', width: 1280, height: 720 },
+  { id: 'app-icon', group: 'Avatar / icon', label: 'App icon', width: 1024, height: 1024 },
+  { id: 'a4', group: 'Print (300 dpi)', label: 'A4', width: 2480, height: 3508 },
+  { id: '4x6', group: 'Print (300 dpi)', label: '4 × 6 in', width: 1200, height: 1800 },
+]
+
+export const MAX_OUTPUT_DIMENSION = 10_000
+
+export function validateOutputSize(size: ImageBounds): string | null {
+  if (!Number.isInteger(size.width) || !Number.isInteger(size.height) || size.width < 1 || size.height < 1) return 'Enter a whole-number output size.'
+  if (size.width > MAX_OUTPUT_DIMENSION || size.height > MAX_OUTPUT_DIMENSION) return `Output size must be ${MAX_OUTPUT_DIMENSION.toLocaleString()} px or smaller per side.`
+  return null
+}
+
+/**
+ * Renders the crop straight from the source image: rotation, flips, crop, and output scaling happen in one draw, so no
+ * full-size rotated intermediate canvas is needed. `rect` is in rotated (bounding-box) pixel coordinates.
+ */
+export function renderCropToBlob(
+  source: CanvasImageSource,
+  sourceSize: ImageBounds,
+  transform: ImageTransform,
+  rect: CropRect,
+  output: ImageBounds,
+  mimeType: string,
+  quality?: number,
+): Promise<Blob> {
   const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(rect.width))
-  canvas.height = Math.max(1, Math.round(rect.height))
+  canvas.width = Math.max(1, Math.round(output.width))
+  canvas.height = Math.max(1, Math.round(output.height))
   const ctx = canvas.getContext('2d')
   if (!ctx) return Promise.reject(new Error('Canvas 2D context is unavailable.'))
 
-  ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, 0, canvas.width, canvas.height)
+  if (mimeType === 'image/jpeg') {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+
+  const degrees = totalRotation(transform)
+  const bounding = rotatedBoundingSize(sourceSize, degrees)
+  ctx.scale(canvas.width / rect.width, canvas.height / rect.height)
+  ctx.translate(-rect.x + bounding.width / 2, -rect.y + bounding.height / 2)
+  ctx.rotate((degrees * Math.PI) / 180)
+  ctx.scale(transform.flipH ? -1 : 1, transform.flipV ? -1 : 1)
+  ctx.drawImage(source, -sourceSize.width / 2, -sourceSize.height / 2, sourceSize.width, sourceSize.height)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Failed to export the cropped image.'))), mimeType, quality)
