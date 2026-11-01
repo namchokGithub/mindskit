@@ -68,9 +68,16 @@ export function resizeCropRect(
   const freeX = corner === 'nw' || corner === 'sw' ? startRect.x + deltaX : startRect.x + startRect.width + deltaX
   const freeY = corner === 'nw' || corner === 'ne' ? startRect.y + deltaY : startRect.y + startRect.height + deltaY
 
-  const width = Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'sw' ? anchorX - freeX : freeX - anchorX)
-  let height = Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'ne' ? anchorY - freeY : freeY - anchorY)
-  if (ratio) height = width / ratio
+  // Room between the anchor and the image edge; limiting to it keeps the anchor fixed and the ratio intact at the edges.
+  const availableWidth = corner === 'nw' || corner === 'sw' ? anchorX : bounds.width - anchorX
+  const availableHeight = corner === 'nw' || corner === 'ne' ? anchorY : bounds.height - anchorY
+
+  let width = Math.min(availableWidth, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'sw' ? anchorX - freeX : freeX - anchorX))
+  let height = Math.min(availableHeight, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'ne' ? anchorY - freeY : freeY - anchorY))
+  if (ratio) {
+    width = Math.min(width, availableHeight * ratio)
+    height = width / ratio
+  }
 
   const x = corner === 'nw' || corner === 'sw' ? anchorX - width : anchorX
   const y = corner === 'nw' || corner === 'ne' ? anchorY - height : anchorY

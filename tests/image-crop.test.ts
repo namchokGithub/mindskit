@@ -6,6 +6,7 @@ import {
   clampFreeAngle,
   maxInscribedRect,
   normalizeQuarterTurns,
+  resizeCropRect,
   resizeCropToDimensions,
   rotatedBoundingSize,
   totalRotation,
@@ -60,4 +61,21 @@ test('validates output sizes and keeps presets within limits', () => {
   assert.match(validateOutputSize({ width: 20_000, height: 630 }) ?? '', /10,000 px/)
   for (const preset of OUTPUT_SIZE_PRESETS) assert.equal(validateOutputSize(preset), null, preset.id)
   assert.equal(new Set(OUTPUT_SIZE_PRESETS.map((preset) => preset.id)).size, OUTPUT_SIZE_PRESETS.length)
+})
+
+test('keeps a locked ratio when a corner is dragged past the image edge', () => {
+  const bounds = { width: 835, height: 1172 }
+  const rect = resizeCropRect('se', { x: 100, y: 100, width: 400, height: 400 }, 2000, 2000, 1, bounds)
+  assert.equal(rect.width, rect.height)
+  assert.deepEqual(rect, { x: 100, y: 100, width: 735, height: 735 })
+
+  const tall = resizeCropRect('nw', { x: 300, y: 300, width: 200, height: 400 }, -1000, -1000, 0.5, bounds)
+  assert.equal(tall.width / tall.height, 0.5)
+  assert.equal(tall.x + tall.width, 500)
+  assert.equal(tall.y + tall.height, 700)
+})
+
+test('keeps the opposite corner fixed when a freeform corner hits the edge', () => {
+  const rect = resizeCropRect('se', { x: 100, y: 100, width: 200, height: 200 }, 5000, 50, null, { width: 1000, height: 800 })
+  assert.deepEqual(rect, { x: 100, y: 100, width: 900, height: 250 })
 })

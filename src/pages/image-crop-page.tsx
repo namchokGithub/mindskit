@@ -14,7 +14,6 @@ import {
   clampCropRect,
   clampFreeAngle,
   exportFileName,
-  maxInscribedRect,
   moveCropRect,
   normalizeQuarterTurns,
   renderCropToBlob,
@@ -119,7 +118,8 @@ export function ImageCropPage() {
   const dragRef = useRef<DragState | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const boundsFor = (size: ImageBounds, nextTransform: ImageTransform) => maxInscribedRect(size, totalRotation(nextTransform))
+  // The crop may cover the whole rotated bounding box; empty corners export transparent (PNG/WebP) or white (JPEG).
+  const boundsFor = (size: ImageBounds, nextTransform: ImageTransform): CropRect => ({ x: 0, y: 0, ...rotatedBoundingSize(size, totalRotation(nextTransform)) })
   const bounding = naturalSize ? rotatedBoundingSize(naturalSize, totalRotation(transform)) : null
   const safeRect = naturalSize ? boundsFor(naturalSize, transform) : null
   const cropBounds: ImageBounds | null = safeRect ? { width: safeRect.width, height: safeRect.height } : null
