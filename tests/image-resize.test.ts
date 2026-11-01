@@ -52,6 +52,16 @@ test('accepts a pixel width without a stored height when aspect ratio is locked'
   )
 })
 
+test('starts pixel editing at the original image size when no dimensions were entered', () => {
+  assert.deepEqual(resize.initialPixelResizeInputs?.({ width: 1_920, height: 1_080 }, '', ''), { width: '1920', height: '1080' })
+  assert.deepEqual(resize.initialPixelResizeInputs?.({ width: 1_920, height: 1_080 }, '640', '360'), { width: '640', height: '360' })
+})
+
+test('locks pixel resize to the visible width and derives height', () => {
+  assert.deepEqual(resize.lockPixelResizeInputs?.({ width: 1_920, height: 1_080 }, '640', '800'), { width: '640', height: '360' })
+  assert.deepEqual(resize.lockPixelResizeInputs?.({ width: 1_920, height: 1_080 }, '', '270'), { width: '480', height: '270' })
+})
+
 test('uses an exportable source type for keep-original and produces a per-size filename', () => {
   assert.equal(resolveResizeMimeType('image/png', 'original'), 'image/png')
   assert.equal(resolveResizeMimeType('image/heic', 'original'), 'image/png')

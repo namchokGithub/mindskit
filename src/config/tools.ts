@@ -457,7 +457,7 @@ export const tools: ToolDefinition[] = [
   {
     id: "image-crop",
     name: "Image Crop",
-    description: "Crop PNG, JPG, and WebP images entirely in your browser.",
+    description: "Crop, rotate, flip, and resize PNG, JPG, and WebP images in your browser.",
     category: "images",
     path: "/images/crop",
     icon: Crop,

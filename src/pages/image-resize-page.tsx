@@ -10,6 +10,8 @@ import {
   canAddResizeJob,
   encoderFallbackMessage,
   exportResizeFileName,
+  initialPixelResizeInputs,
+  lockPixelResizeInputs,
   resolveExportedMimeType,
   resolveResizeMimeType,
   resolvePixelResizeDimensions,
@@ -95,6 +97,11 @@ export function ImageResizePage() {
     setFile(nextFile)
     setImageUrl(URL.createObjectURL(nextFile))
     setOriginalSize(null)
+    setJobs([newJob(1)])
+    setNextJobId(2)
+    setKeepAspectRatio(true)
+    setFormat('original')
+    setQuality('90')
     setError('')
     setProgress(null)
   }
@@ -112,6 +119,51 @@ export function ImageResizePage() {
   const updateJob = (id: number, patch: Partial<ResizeJob>) => {
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, ...patch } : job)))
     clearResults()
+    setError('')
+  }
+
+  const changeJobMode = (id: number, mode: ResizeMode) => {
+    setJobs((current) => current.map((job) => {
+      if (job.id !== id) return job
+      if (mode !== 'pixels' || !originalSize) return { ...job, mode }
+      const dimensions = initialPixelResizeInputs(originalSize, job.width, job.height)
+      return {
+        ...job,
+        mode,
+        ...(keepAspectRatio ? lockPixelResizeInputs(originalSize, dimensions.width, dimensions.height) : dimensions),
+        changedDimension: 'width' as const,
+      }
+    }))
+    clearResults()
+    setError('')
+  }
+
+  const changeKeepAspectRatio = (checked: boolean) => {
+    if (checked && originalSize) {
+      setJobs((current) => current.map((job) => job.mode === 'pixels'
+        ? { ...job, ...lockPixelResizeInputs(originalSize, job.width, job.height), changedDimension: 'width' as const }
+        : job))
+    }
+    setKeepAspectRatio(checked)
+    clearResults()
+  }
+
+  const handleImageLoad = (image: HTMLImageElement) => {
+    const size = { width: image.naturalWidth, height: image.naturalHeight }
+    if (size.width > 10_000 || size.height > 10_000) {
+      setError('Images must be 10,000 px or smaller on each side.')
+      return
+    }
+    setOriginalSize(size)
+    setJobs((current) => current.map((job) => {
+      if (job.mode !== 'pixels') return job
+      const dimensions = initialPixelResizeInputs(size, job.width, job.height)
+      return {
+        ...job,
+        ...(keepAspectRatio ? lockPixelResizeInputs(size, dimensions.width, dimensions.height) : dimensions),
+        changedDimension: 'width' as const,
+      }
+    }))
     setError('')
   }
 
@@ -198,7 +250,7 @@ export function ImageResizePage() {
           <section className="flex min-h-0 flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-medium">Original</h2>{originalSize && <span className="text-xs text-muted-foreground">{originalSize.width} × {originalSize.height} · {formatBytes(file.size)}</span>}</div>
             <div className="flex min-h-52 flex-1 items-center justify-center rounded-lg bg-muted/30 p-3">
-              <img ref={imageRef} src={imageUrl} alt="Selected to resize" onLoad={(event) => { const image = event.currentTarget; const size = { width: image.naturalWidth, height: image.naturalHeight }; if (size.width > 10_000 || size.height > 10_000) { setError('Images must be 10,000 px or smaller on each side.'); return }; setOriginalSize(size); setError('') }} onError={() => setError('Could not read this image file.')} className="max-h-80 max-w-full object-contain" />
+              <img ref={imageRef} src={imageUrl} alt="Selected to resize" onLoad={(event) => handleImageLoad(event.currentTarget)} onError={() => setError('Could not read this image file.')} className="max-h-80 max-w-full object-contain" />
             </div>
             <p className="text-xs text-muted-foreground">Each export is processed locally, one size at a time. JPEG exports use a white background because JPEG does not support transparency.</p>
           </section>
@@ -207,7 +259,7 @@ export function ImageResizePage() {
             <div className="flex flex-wrap items-end gap-3">
               <label className="text-xs text-muted-foreground">Format<select value={format} onChange={(event) => { setFormat(event.target.value as ResizeFormat); clearResults() }} disabled={progress !== null} className={`${fieldClass} mt-1 block w-36`}><option value="original">Keep original</option><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
               <label className="text-xs text-muted-foreground">Quality {quality}%<input type="range" min="1" max="100" value={quality} onChange={(event) => { setQuality(event.target.value); clearResults() }} disabled={!qualityEnabled || progress !== null} className="mt-2 block w-32 accent-primary" /></label>
-              <label className="flex items-center gap-2 pb-1 text-xs text-muted-foreground"><Checkbox checked={keepAspectRatio} onCheckedChange={(value) => { setKeepAspectRatio(value === true); clearResults() }} disabled={progress !== null} />Keep aspect ratio</label>
+              <label className="flex items-center gap-2 pb-1 text-xs text-muted-foreground"><Checkbox checked={keepAspectRatio} onCheckedChange={(value) => changeKeepAspectRatio(value === true)} disabled={progress !== null} />Keep aspect ratio</label>
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-border">
@@ -215,7 +267,7 @@ export function ImageResizePage() {
                 <div className="grid grid-cols-[2rem_8rem_1fr_1fr_auto] items-center gap-2 bg-secondary/50 p-2 text-xs font-medium text-muted-foreground"><span>#</span><span>Resize by</span><span>Width / percent</span><span>Height</span><span /></div>
                 {jobs.map((job, index) => {
                   const preview = resolveJobSize(job)
-                  return <div key={job.id} className="grid grid-cols-[2rem_8rem_1fr_1fr_auto] items-center gap-2 p-2"><span className="text-center text-xs text-muted-foreground">{index + 1}</span><select aria-label={`Resize mode ${index + 1}`} value={job.mode} onChange={(event) => updateJob(job.id, { mode: event.target.value as ResizeMode })} disabled={progress !== null} className={fieldClass}><option value="percentage">Percentage</option><option value="pixels">Pixels</option></select>{job.mode === 'percentage' ? <input aria-label={`Percentage ${index + 1}`} type="number" min="1" step="any" value={job.percentage} onChange={(event) => updateJob(job.id, { percentage: event.target.value })} disabled={progress !== null} className={fieldClass} /> : <input aria-label={`Width ${index + 1}`} type="number" min="1" value={job.width} onChange={(event) => updateJob(job.id, { width: event.target.value, changedDimension: 'width' })} disabled={progress !== null} className={fieldClass} />}{job.mode === 'percentage' ? <span className="text-xs text-muted-foreground">{preview ? `${preview.width} × ${preview.height}px` : 'Enter a value'}</span> : <input aria-label={`Height ${index + 1}`} type="number" min="1" value={keepAspectRatio && preview ? preview.height : job.height} onChange={(event) => updateJob(job.id, { height: event.target.value, changedDimension: 'height' })} disabled={keepAspectRatio || progress !== null} className={fieldClass} />}<Button type="button" size="icon" variant="ghost" aria-label={`Remove size ${index + 1}`} disabled={jobs.length === 1 || progress !== null} onClick={() => { setJobs((current) => current.filter((item) => item.id !== job.id)); clearResults() }}><Trash2 /></Button></div>
+                  return <div key={job.id} className="grid grid-cols-[2rem_8rem_1fr_1fr_auto] items-center gap-2 p-2"><span className="text-center text-xs text-muted-foreground">{index + 1}</span><select aria-label={`Resize mode ${index + 1}`} value={job.mode} onChange={(event) => changeJobMode(job.id, event.target.value as ResizeMode)} disabled={progress !== null} className={fieldClass}><option value="percentage">Percentage</option><option value="pixels">Pixels</option></select>{job.mode === 'percentage' ? <input aria-label={`Percentage ${index + 1}`} type="number" min="1" step="any" value={job.percentage} onChange={(event) => updateJob(job.id, { percentage: event.target.value })} disabled={progress !== null} className={fieldClass} /> : <input aria-label={`Width ${index + 1}`} type="number" min="1" value={job.width} onChange={(event) => updateJob(job.id, { width: event.target.value, changedDimension: 'width' })} disabled={progress !== null} className={fieldClass} />}{job.mode === 'percentage' ? <span className="text-xs text-muted-foreground">{preview ? `${preview.width} × ${preview.height}px` : 'Enter a value'}</span> : <input aria-label={`Height ${index + 1}`} type="number" min="1" value={keepAspectRatio ? preview?.height ?? '' : job.height} onChange={(event) => updateJob(job.id, { height: event.target.value, changedDimension: 'height' })} disabled={keepAspectRatio || progress !== null} className={fieldClass} />}<Button type="button" size="icon" variant="ghost" aria-label={`Remove size ${index + 1}`} disabled={jobs.length === 1 || progress !== null} onClick={() => { setJobs((current) => current.filter((item) => item.id !== job.id)); clearResults() }}><Trash2 /></Button></div>
                 })}
               </div>
             </div>
