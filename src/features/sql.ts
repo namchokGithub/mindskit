@@ -318,6 +318,8 @@ export async function validateSqlSyntax(input: string, dialect: SqlDialect): Pro
 }
 
 function needsSqlSpace(before: string, after: string): boolean {
+  // Joining these pairs would start a comment (`5 - -3` must not become `5--3`).
+  if ((before === '-' && after === '-') || (before === '/' && after === '*')) return true
   const punctuation = '(),;.+-*/%=<>!|&^~'
   return !punctuation.includes(before) && !punctuation.includes(after)
 }

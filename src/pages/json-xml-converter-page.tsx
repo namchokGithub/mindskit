@@ -5,6 +5,7 @@ import { CodeEditor } from '@/components/tool/code-editor'
 import { CopyButton } from '@/components/tool/copy-button'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from '@/components/tool/text-stats'
 import { Button } from '@/components/ui/button'
 import { jsonToXml, xmlToJson } from '@/features/json-xml-converter'
@@ -75,6 +76,7 @@ export function JsonXmlConverterPage() {
           <section className="flex min-h-0 min-w-0 flex-col"><div className="flex items-center justify-between gap-2 px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">{outputFormat} output</span><CopyButton value={hasConverted ? output : ''} /></div><CodeEditor bare value={hasConverted ? output : ''} readOnly placeholder={`Converted ${outputFormat} will appear here.`} wrap ariaLabel={`${outputFormat} output`} language={isJsonToXml ? 'xml' : 'json'} /></section>
         </div>
       </div>
+      {isJsonToXml && <JsonPrecisionWarning input={input} />}
       <ToolStatus state={error ? 'invalid' : hasConverted ? 'valid' : 'idle'} message={error} validLabel={`Converted to ${outputFormat} successfully`} />
       {dialog}
     </div>

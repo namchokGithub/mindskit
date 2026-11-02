@@ -5,6 +5,7 @@ import { CodeEditor } from '@/components/tool/code-editor'
 import { CopyButton } from '@/components/tool/copy-button'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from '@/components/tool/text-stats'
 import { Button } from '@/components/ui/button'
 import { jsonToCsv, jsonToYaml } from '@/features/json-converters'
@@ -71,6 +72,7 @@ function JsonConverterPage({ title, description, actionLabel, actionIcon, output
           <section className="flex min-h-0 min-w-0 flex-col"><div className="flex items-center justify-between gap-2 px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">{outputLabel}</span><div className="flex shrink-0 items-center gap-2"><Button type="button" variant="outline" size="sm" onClick={() => download(output, `mindskit-output.${extension}`, extension === 'csv' ? 'text/csv;charset=utf-8' : 'text/yaml;charset=utf-8')} disabled={!hasConverted}><Download />Download</Button><CopyButton value={hasConverted ? output : ''} /></div></div><CodeEditor bare value={hasConverted ? output : ''} readOnly placeholder="Converted output will appear here." wrap ariaLabel={outputLabel} language="text" /></section>
         </div>
       </div>
+      <JsonPrecisionWarning input={input} />
       <ToolStatus state={error ? 'invalid' : hasConverted ? 'valid' : 'idle'} message={error} validLabel={`${actionLabel} completed`} />
       {dialog}
     </div>

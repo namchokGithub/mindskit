@@ -5,6 +5,7 @@ import { CodeEditor } from '@/components/tool/code-editor'
 import { CopyButton } from '@/components/tool/copy-button'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatSql, formatSqlInClause, generateSqlInserts, minifySql, sqlDialects, type SqlDialect, type SqlInOptions } from '@/features/sql'
@@ -134,6 +135,7 @@ export function SqlToolsPage({ tool }: { tool: SqlTool }) {
         <section className="flex min-w-0 flex-col"><div className="flex h-11 items-center justify-between gap-2 px-3"><span className="text-sm font-medium">SQL output</span><div className="flex gap-2"><CopyButton value={output} /><Button size="sm" variant="outline" disabled={!output} onClick={download}><Download />.sql</Button></div></div><CodeEditor bare value={output} readOnly wrap ariaLabel={`${config.title} output`} language="sql" placeholder="SQL output will appear here." /></section>
       </div>
     </div>
+    {tool === 'insert' && <JsonPrecisionWarning input={input} />}
     <ToolStatus state={error ? 'invalid' : output ? 'valid' : 'idle'} message={error || undefined} validLabel="SQL generated successfully" />
     {dialog}
   </div>

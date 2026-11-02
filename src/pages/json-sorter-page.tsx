@@ -5,6 +5,7 @@ import { CodeEditor } from '@/components/tool/code-editor'
 import { CopyButton } from '@/components/tool/copy-button'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from '@/components/tool/text-stats'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -93,6 +94,7 @@ export function JsonSorterPage() {
           <section className="flex min-h-0 min-w-0 flex-col"><div className="flex items-center justify-between gap-2 px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Sorted JSON</span><CopyButton value={result?.ok ? result.output : ''} /></div><CodeEditor bare value={result?.ok ? result.output : ''} readOnly placeholder="Sorted JSON will appear here." wrap={wrap} ariaLabel="Sorted JSON" /></section>
         </div>
       </div>
+      <JsonPrecisionWarning input={input} />
       <ToolStatus state={result === null ? 'idle' : result.ok ? 'valid' : 'invalid'} message={result && !result.ok ? result.message : undefined} validLabel="Sorted successfully" />
       {dialog}
     </div>

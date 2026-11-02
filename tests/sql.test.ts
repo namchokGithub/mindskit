@@ -111,3 +111,8 @@ test('syntax checker reports parser results without executing SQL', async () => 
   assert.equal(invalid.valid, false)
   assert.ok(invalid.message)
 })
+
+test('minifier never joins tokens into a comment marker', () => {
+  assert.equal(minifySql('SELECT 5 - -3 AS x'), 'SELECT 5- -3 AS x')
+  assert.equal(minifySql('SELECT 10 / *'), 'SELECT 10/ *')
+})

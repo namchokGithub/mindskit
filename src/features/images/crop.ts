@@ -46,6 +46,27 @@ export function applyAspectRatio(rect: CropRect, ratio: number | null, bounds: I
   return clampCropRect({ x: centerX - width / 2, y: centerY - height / 2, width, height }, bounds)
 }
 
+/**
+ * Re-fits a rect to a new aspect ratio while keeping its area and center, so a crop changes shape instead of
+ * collapsing toward one dimension. Falls back to the largest fit when the bounds are too small.
+ */
+export function fitAspectRatioKeepingArea(rect: CropRect, ratio: number, bounds: ImageBounds): CropRect {
+  const area = rect.width * rect.height
+  let width = Math.sqrt(area * ratio)
+  let height = width / ratio
+  if (width > bounds.width) {
+    width = bounds.width
+    height = width / ratio
+  }
+  if (height > bounds.height) {
+    height = bounds.height
+    width = height * ratio
+  }
+  const centerX = rect.x + rect.width / 2
+  const centerY = rect.y + rect.height / 2
+  return clampCropRect({ x: centerX - width / 2, y: centerY - height / 2, width, height }, bounds)
+}
+
 /** Moves a rect by a pointer delta (in natural image pixels), clamped to bounds. */
 export function moveCropRect(startRect: CropRect, deltaX: number, deltaY: number, bounds: ImageBounds): CropRect {
   return clampCropRect({ ...startRect, x: startRect.x + deltaX, y: startRect.y + deltaY }, bounds)

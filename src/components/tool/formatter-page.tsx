@@ -6,6 +6,7 @@ import { CopyButton } from "@/components/tool/copy-button";
 import { IndentSelect } from "@/components/tool/indent-select";
 import { ToolPageHeader } from "@/components/tool/tool-page-header";
 import { ToolStatus } from "@/components/tool/tool-status";
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from "@/components/tool/text-stats";
 import { Button } from "@/components/ui/button";
 import { usePersistedInput } from "@/hooks/use-persisted-input";
@@ -27,6 +28,8 @@ export interface FormatterPageConfig {
   inputPlaceholder: string;
   storageKey: string;
   process: (input: string, indent: IndentOption) => FormatResult;
+  /** Show a warning when JSON input has numbers JavaScript would round. */
+  checkJsonPrecision?: boolean;
   outputModes?: FormatterOutputMode[];
   outputPreview?: (output: string, mode: Exclude<FormatterOutputMode, "code" | "text">) => ReactNode;
 }
@@ -176,7 +179,8 @@ export function FormatterPage(config: FormatterPageConfig) {
         </div>
       </div>
 
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col gap-2">
+        {config.checkJsonPrecision && <JsonPrecisionWarning input={input} />}
         <ToolStatus
           state={result === null ? "idle" : result.ok ? "valid" : "invalid"}
           message={result && !result.ok ? result.message : undefined}

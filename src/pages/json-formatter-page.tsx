@@ -8,6 +8,7 @@ import { getRandomSampleJson } from '@/features/formatters/samples'
 export function JsonFormatterPage() {
   return (
     <FormatterPage
+      checkJsonPrecision
       title="JSON Formatter"
       description="Paste JSON and beautify it with your preferred indentation."
       actionLabel="Format"

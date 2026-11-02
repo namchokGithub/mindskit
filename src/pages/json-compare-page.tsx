@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CodeEditor } from '@/components/tool/code-editor'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from '@/components/tool/text-stats'
 import { Button } from '@/components/ui/button'
 import { useLargeInputConfirmation } from '@/hooks/use-large-input-confirmation'
@@ -154,6 +155,8 @@ export function JsonComparePage() {
           </div>
         </section>
       </div>
+      <JsonPrecisionWarning input={leftInput} />
+      <JsonPrecisionWarning input={rightInput} />
       <ToolStatus state={comparison === null ? 'idle' : comparison.ok ? 'valid' : 'invalid'} message={comparison && !comparison.ok ? comparison.message : undefined} line={comparison && !comparison.ok ? comparison.line : undefined} validLabel={comparison?.ok && differences.length === 0 ? 'Documents match' : 'Comparison completed'} />
       {dialog}
     </div>
