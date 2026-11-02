@@ -29,7 +29,7 @@ export function LargeInputDialog({
               ข้อมูลขนาดใหญ่เกินไป
             </h2>
             <p className="text-sm text-muted-foreground">
-              เกิน {limitLabel} อาจทำให้เบราว์เซอร์ช้าหรือค้างได้ ต้องจ่าย $20
+              เกิน {limitLabel} อาจทำให้เบราว์เซอร์ช้าหรือค้างได้
             </p>
           </div>
         </div>

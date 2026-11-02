@@ -271,3 +271,36 @@ test('loadDraft returns null and renameDraft rejects for a missing id', async ()
   assert.equal(await drafts.loadDraft('missing'), null)
   await assert.rejects(() => drafts.renameDraft('missing', 'x'))
 })
+
+test('mergeAppliedMarkdown round-trips badges, the TOC toggle, and the template without edits', () => {
+  let current = createDocument('frontend-app')
+  current = updateSection(current, current.sections[0].id, { body: 'Overview text.' })
+  const features = current.sections.find((section) => section.kind === 'features')!
+  current = updateSection(current, features.id, { body: '- Fast\n- Local' })
+  current = {
+    ...current,
+    includeTableOfContents: true,
+    badges: [
+      { id: 'b1', label: 'build', message: 'passing', color: 'green' },
+      { id: 'b2', label: 'license', message: 'MIT', color: 'blue', link: 'https://example.com/license' },
+    ],
+  }
+  const merged = mergeAppliedMarkdown(current, importReadme(renderReadme(current)).document)
+
+  assert.deepEqual(merged.badges, current.badges)
+  assert.equal(merged.includeTableOfContents, true)
+  assert.equal(merged.projectType, 'frontend-app')
+  assert.ok(!merged.sections.some((section) => section.fields.customTitle === 'Imported Content'))
+  assert.ok(!merged.sections.some((section) => section.fields.customTitle === 'Table of Contents'))
+  assert.equal(renderReadme(merged), renderReadme(current))
+})
+
+test('mergeAppliedMarkdown parses an edited badge line and keeps other preamble text', () => {
+  const current = { ...createDocument('blank'), badges: [{ id: 'b1', label: 'build', message: 'passing', color: 'green' }] }
+  const markdown = '# Title\n\n![version](https://img.shields.io/badge/version-1.2-orange)\n\nIntro paragraph.\n\n## Overview\n\nText.'
+  const merged = mergeAppliedMarkdown(current, importReadme(markdown).document)
+
+  assert.deepEqual(merged.badges, [{ id: 'b1', label: 'version', message: '1.2', color: 'orange' }])
+  assert.equal(merged.sections[0].fields.customTitle, 'Imported Content')
+  assert.equal(merged.sections[0].body, 'Intro paragraph.')
+})

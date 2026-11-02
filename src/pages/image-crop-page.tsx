@@ -14,6 +14,7 @@ import {
   clampCropRect,
   clampFreeAngle,
   exportFileName,
+  fitAspectRatioKeepingArea,
   moveCropRect,
   normalizeQuarterTurns,
   renderCropToBlob,
@@ -117,6 +118,7 @@ export function ImageCropPage() {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const customEditStartRef = useRef<CropRect | null>(null)
 
   // The crop may cover the whole rotated bounding box; empty corners export transparent (PNG/WebP) or white (JPEG).
   const boundsFor = (size: ImageBounds, nextTransform: ImageTransform): CropRect => ({ x: 0, y: 0, ...rotatedBoundingSize(size, totalRotation(nextTransform)) })
@@ -201,11 +203,18 @@ export function ImageCropPage() {
     else applyRatio(RATIO_OPTIONS.find((option) => option.value === ratioKey)?.ratio ?? null)
   }
 
+  const handleCustomSizeFocus = () => {
+    customEditStartRef.current = cropRect
+  }
+
   const handleCustomSizeChange = (dimension: 'width' | 'height', value: string) => {
     const next = dimension === 'width' ? { ...customSize, width: Number(value) } : { ...customSize, height: Number(value) }
     if (dimension === 'width') setCustomWidth(value)
     else setCustomHeight(value)
-    if (!validateOutputSize(next)) applyRatio(next.width / next.height)
+    // Re-fit from the crop as it was when editing started, so intermediate values (typing "8" on the way to "800")
+    // never shrink the crop cumulatively.
+    const start = customEditStartRef.current ?? cropRect
+    if (!validateOutputSize(next) && start && cropBounds) setCropRect(fitAspectRatioKeepingArea(start, next.width / next.height, cropBounds))
   }
 
   const updateTransform = (next: ImageTransform) => {
@@ -465,8 +474,8 @@ export function ImageCropPage() {
               </label>
               {outputMode === 'custom' && (
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Output width<input type="number" min={1} value={customWidth} onChange={(event) => handleCustomSizeChange('width', event.target.value)} aria-invalid={Boolean(customError)} className={fieldClass} /></label>
-                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Output height<input type="number" min={1} value={customHeight} onChange={(event) => handleCustomSizeChange('height', event.target.value)} aria-invalid={Boolean(customError)} className={fieldClass} /></label>
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Output width<input type="number" min={1} value={customWidth} onFocus={handleCustomSizeFocus} onChange={(event) => handleCustomSizeChange('width', event.target.value)} aria-invalid={Boolean(customError)} className={fieldClass} /></label>
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Output height<input type="number" min={1} value={customHeight} onFocus={handleCustomSizeFocus} onChange={(event) => handleCustomSizeChange('height', event.target.value)} aria-invalid={Boolean(customError)} className={fieldClass} /></label>
                   {customError && <p className="col-span-2 text-xs text-destructive">{customError}</p>}
                 </div>
               )}

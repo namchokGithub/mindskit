@@ -80,7 +80,7 @@ export function createBadgeUrl(badge: ReadmeBadge): string {
  * `rehype-raw`) renders this as an actual image; raw HTML `<img>`/`<a>` tags
  * would render as literal escaped text instead.
  */
-function renderBadgeMarkup(badge: ReadmeBadge): string {
+export function renderBadgeMarkup(badge: ReadmeBadge): string {
   const url = escapeMarkdownUrl(createBadgeUrl(badge))
   const alt = escapeMarkdownLabel(badge.label)
   const image = `![${alt}](${url})`

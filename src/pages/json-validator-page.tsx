@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CodeEditor } from '@/components/tool/code-editor'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
+import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from '@/components/tool/text-stats'
 import { Button } from '@/components/ui/button'
 import { validateJson } from '@/features/formatters/json'
@@ -70,6 +71,7 @@ export function JsonValidatorPage() {
       </div>
 
       <div className="shrink-0">
+        <JsonPrecisionWarning input={input} />
         <ToolStatus
           state={result === null ? 'idle' : result.valid ? 'valid' : 'invalid'}
           message={result?.message}

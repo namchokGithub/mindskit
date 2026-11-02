@@ -29,6 +29,8 @@ import {
   convertUrl,
   currentUnixTimestamp,
   quickOperations,
+  randomStringCapacity,
+  uniqueCharacters,
 } from "@/features/quick-tools";
 
 export function Base64Page() {
@@ -261,13 +263,14 @@ export function RandomStringPage() {
       .join("");
     const total = Math.max(1, Math.min(200, Number(count) || 1));
     const size = Math.max(1, Math.min(256, Number(length) || 16));
-    if (!alphabet) {
+    const characters = uniqueCharacters(alphabet);
+    if (characters.length === 0) {
       setResults([]);
       setOutput("");
       setError("Choose at least one allowed character.");
       return;
     }
-    const capacity = size > 6 ? Infinity : alphabet.length ** size;
+    const capacity = randomStringCapacity(characters.length, size);
     if (unique && total > capacity) {
       setResults([]);
       setOutput("");
@@ -280,7 +283,7 @@ export function RandomStringPage() {
       Array.from({ length: size }, () => {
         const values = new Uint32Array(1);
         crypto.getRandomValues(values);
-        return alphabet[values[0] % alphabet.length];
+        return characters[values[0] % characters.length];
       }).join("");
     const results = unique
       ? (() => {

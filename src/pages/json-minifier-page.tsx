@@ -8,6 +8,7 @@ import { getRandomSampleJson } from '@/features/formatters/samples'
 export function JsonMinifierPage() {
   return (
     <FormatterPage
+      checkJsonPrecision
       title="JSON Minifier"
       description="Paste JSON and collapse it into a single compact line."
       actionLabel="Minify"

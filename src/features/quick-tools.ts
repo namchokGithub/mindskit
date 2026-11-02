@@ -70,3 +70,13 @@ function formatTimestampForTimeZone(date: Date, timeZone?: string): string {
   const offset = values.timeZoneName === 'GMT' ? 'Z' : values.timeZoneName.replace('GMT', '')
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}.${String(date.getMilliseconds()).padStart(3, '0')}${offset}`
 }
+
+/** Distinct characters by code point, so duplicates and emoji count once and are never split into surrogate halves. */
+export function uniqueCharacters(alphabet: string): string[] {
+  return [...new Set(alphabet)]
+}
+
+/** How many distinct strings of `length` can be built from `characterCount` characters (may be Infinity for huge values). */
+export function randomStringCapacity(characterCount: number, length: number): number {
+  return characterCount ** length
+}

@@ -1,5 +1,5 @@
 import { MessageCircleMore, Pin, Search, Star } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +34,33 @@ export function readQuickActionsState(): QuickActionsState {
   }
 }
 
+// One shared store for every mounted QuickActions (header, sidebar, floating, mobile sheet), so instances never
+// overwrite each other's pins or recent list with stale copies.
+let currentState: QuickActionsState | null = null
+let lastRecordedPath: string | null = null
+const listeners = new Set<() => void>()
+
+function getQuickActionsSnapshot(): QuickActionsState {
+  currentState ??= readQuickActionsState()
+  return currentState
+}
+
+function subscribeQuickActions(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function updateQuickActions(update: (previous: QuickActionsState) => QuickActionsState) {
+  currentState = update(getQuickActionsSnapshot())
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState))
+  } catch {
+    // localStorage unavailable — keep the in-memory state
+  }
+  listeners.forEach((listener) => listener())
+  window.dispatchEvent(new Event(QUICK_ACTIONS_UPDATED_EVENT))
+}
+
 function getTool(id: string): ToolDefinition | undefined {
   return tools.find((tool) => tool.id === id)
 }
@@ -44,29 +71,20 @@ export function QuickActions({ variant = 'floating' }: { variant?: 'sidebar' | '
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [state, setState] = useState<QuickActionsState>(readQuickActionsState)
-  const lastRecordedPath = useRef<string | null>(null)
+  const state = useSyncExternalStore(subscribeQuickActions, getQuickActionsSnapshot)
 
   useEffect(() => {
-    if (lastRecordedPath.current === location.pathname) return
+    // Every mounted instance runs this effect; the module-level guard records each visit once.
+    if (lastRecordedPath === location.pathname) return
     const tool = tools.find((item) => item.path === location.pathname)
     if (!tool) return
-    lastRecordedPath.current = location.pathname
-    setState((previous) => ({
+    lastRecordedPath = location.pathname
+    updateQuickActions((previous) => ({
       ...previous,
       recent: [tool.id, ...previous.recent.filter((id) => id !== tool.id)].slice(0, 5),
       usage: { ...previous.usage, [tool.id]: (previous.usage[tool.id] ?? 0) + 1 },
     }))
   }, [location.pathname])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-      window.dispatchEvent(new Event(QUICK_ACTIONS_UPDATED_EVENT))
-    } catch {
-      // localStorage unavailable — ignore
-    }
-  }, [state])
 
   const favorites = state.favorites.map(getTool).filter((tool): tool is ToolDefinition => Boolean(tool))
   const recent = state.recent.map(getTool).filter((tool): tool is ToolDefinition => Boolean(tool))
@@ -84,7 +102,7 @@ export function QuickActions({ variant = 'floating' }: { variant?: 'sidebar' | '
   )
 
   const toggleFavorite = (id: string) => {
-    setState((previous) => ({
+    updateQuickActions((previous) => ({
       ...previous,
       favorites: previous.favorites.includes(id)
         ? previous.favorites.filter((favorite) => favorite !== id)
@@ -92,7 +110,7 @@ export function QuickActions({ variant = 'floating' }: { variant?: 'sidebar' | '
     }))
   }
 
-  const clearRecent = () => setState((previous) => ({ ...previous, recent: [] }))
+  const clearRecent = () => updateQuickActions((previous) => ({ ...previous, recent: [] }))
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (!nextOpen) setQuery('')

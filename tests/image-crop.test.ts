@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   OUTPUT_SIZE_PRESETS,
   clampFreeAngle,
+  fitAspectRatioKeepingArea,
   maxInscribedRect,
   normalizeQuarterTurns,
   resizeCropRect,
@@ -78,4 +79,18 @@ test('keeps a locked ratio when a corner is dragged past the image edge', () => 
 test('keeps the opposite corner fixed when a freeform corner hits the edge', () => {
   const rect = resizeCropRect('se', { x: 100, y: 100, width: 200, height: 200 }, 5000, 50, null, { width: 1000, height: 800 })
   assert.deepEqual(rect, { x: 100, y: 100, width: 900, height: 250 })
+})
+
+test('re-fits a crop to a new ratio without collapsing it', () => {
+  const bounds = { width: 1000, height: 1000 }
+  const start = { x: 300, y: 300, width: 400, height: 400 }
+  assert.deepEqual(fitAspectRatioKeepingArea(start, 4, bounds), { x: 100, y: 400, width: 800, height: 200 })
+  const extreme = fitAspectRatioKeepingArea(start, 8 / 630, bounds)
+  assert.equal(extreme.height, 1000)
+  assert.ok(Math.abs(extreme.width - (1000 * 8) / 630) < 1e-9)
+  // Re-fitting from the same start (not the extreme result) restores a usable crop with the same area.
+  const restored = fitAspectRatioKeepingArea(start, 2, bounds)
+  assert.ok(Math.abs(restored.width * restored.height - 160_000) < 1e-6)
+  assert.ok(Math.abs(restored.width / restored.height - 2) < 1e-9)
+  assert.ok(Math.abs(restored.x + restored.width / 2 - 500) < 1e-9)
 })
