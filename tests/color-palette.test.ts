@@ -25,6 +25,13 @@ test('uses a label on the same line before the color', () => {
   ])
 })
 
+test('extracts HEX colors without # and normalizes them for copying', () => {
+  assert.deepEqual(extractColorsFromText('Primary Pearl Gold\nD5C49A\n\nAccent: abc'), [
+    { name: 'Primary Pearl Gold', hex: '#D5C49A' },
+    { name: 'Accent', hex: '#ABC' },
+  ])
+})
+
 test('falls back to numbered names and keeps duplicates', () => {
   assert.deepEqual(extractColorsFromText('#111111 #111111\n\n#222'), [
     { name: 'Color 1', hex: '#111111' },
@@ -33,8 +40,8 @@ test('falls back to numbered names and keeps duplicates', () => {
   ])
 })
 
-test('ignores values that are not #RGB or #RRGGBB colors', () => {
-  assert.deepEqual(extractColorsFromText('#1234 #ABCDEF12 &#123; #ggg abc#fff'), [])
+test('ignores incomplete HEX values and codes embedded in other tokens', () => {
+  assert.deepEqual(extractColorsFromText('#1234 #ABCDEF12 &#123; #ggg abc#fff prefixD5C49A D5C49Asuffix'), [])
 })
 
 test('validates and normalizes HEX colors to uppercase', () => {

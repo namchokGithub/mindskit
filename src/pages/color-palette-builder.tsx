@@ -80,7 +80,7 @@ function PaletteWorkspace({ converter }: { converter: ReactNode }) {
   const extract = () => {
     const colors = extractColorsFromText(text);
     if (colors.length === 0) {
-      setNotice({ state: "invalid", message: "No HEX colors found. Use #RGB or #RRGGBB, for example #D5C49A." });
+      setNotice({ state: "invalid", message: "No HEX colors found. Use RGB or RRGGBB, with or without #, for example D5C49A." });
       return;
     }
     setItems(toItems(colors.slice(0, MAX_PALETTE_COLORS)));
@@ -131,7 +131,7 @@ function PaletteWorkspace({ converter }: { converter: ReactNode }) {
           <div>
             <h2 className="text-sm font-medium text-foreground">Extract colors from text</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Paste a color spec, notes, or Markdown. HEX colors (#RGB, #RRGGBB) are found in order, and a label on the
+              Paste a color spec, notes, or Markdown. HEX colors (RGB or RRGGBB, with or without #) are found in order, and a label on the
               same line or at the top of the paragraph becomes the color name.
             </p>
           </div>
@@ -139,7 +139,7 @@ function PaletteWorkspace({ converter }: { converter: ReactNode }) {
             value={text}
             onChange={(event) => setText(event.target.value)}
             aria-label="Text to extract colors from"
-            placeholder={"Primary Pearl Gold\n#D5C49A"}
+            placeholder={"Primary Pearl Gold\nD5C49A"}
             className="min-h-48 resize-y font-mono field-sizing-fixed"
           />
           <div className="flex flex-wrap gap-2">

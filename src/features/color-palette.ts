@@ -2,7 +2,7 @@ export const MAX_PALETTE_COLORS = 20
 
 export type PaletteColor = { name: string; hex: string }
 
-const hexPattern = /(?<![\w&#])#([0-9a-f]{6}|[0-9a-f]{3})(?![0-9a-z_])/gi
+const hexPattern = /(?<![\w&#])#?(?:[0-9a-f]{6}|[0-9a-f]{3})(?![0-9a-z_])/gi
 const nameEdgeCharacters = /^[\s|:*_`>#\-–—=•·,.;()[\]]+|[\s|:*_`>#\-–—=•·,.;()[\]]+$/g
 const maxNameLength = 60
 
