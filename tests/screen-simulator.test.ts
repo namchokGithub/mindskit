@@ -119,3 +119,9 @@ test('tracks countdown and stopwatch time across pauses', async () => {
   assert.equal(formatTimer(65_432, true), '01:05.43')
   assert.equal(formatTimer(0), '00:00')
 })
+
+test('draws opaque black-and-white static frames', async () => {
+  const { fillNoiseFrame } = await import('../src/features/screen-simulator/noise.ts')
+  assert.deepEqual([...fillNoiseFrame(new Uint8ClampedArray(4), () => 0.9)], [255, 255, 255, 255])
+  assert.deepEqual([...fillNoiseFrame(new Uint8ClampedArray(4), () => 0.1)], [0, 0, 0, 255])
+})
