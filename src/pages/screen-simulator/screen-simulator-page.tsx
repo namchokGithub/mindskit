@@ -317,7 +317,7 @@ export function ScreenSimulatorPage() {
 
       <div role="tablist" aria-label="Screen Simulator sections" className="flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1 shadow-sm">
         {TABS.map((item) => (
-          <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', tab === item.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}>
+          <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', tab === item.id ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}>
             {item.label}
           </button>
         ))}
