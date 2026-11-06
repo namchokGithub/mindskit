@@ -27,6 +27,34 @@ function decodeComponent(value: string): string {
 }
 
 /**
+ * Split a Shields.io badge path into its segments on single dashes only. A
+ * doubled `--` is Shields' escape for a literal `-` and stays inside the
+ * segment as one `-`.
+ */
+function splitBadgePath(path: string): string[] {
+  const segments: string[] = []
+  let current = ''
+  for (let index = 0; index < path.length; index += 1) {
+    if (path[index] !== '-') {
+      current += path[index]
+    } else if (path[index + 1] === '-') {
+      current += '-'
+      index += 1
+    } else {
+      segments.push(current)
+      current = ''
+    }
+  }
+  segments.push(current)
+  return segments
+}
+
+/** Decode one badge path segment, turning Shields' `__` escape back into a literal `_`. */
+function decodeBadgeSegment(value: string): string {
+  return decodeComponent(value.replace(/__/g, '_'))
+}
+
+/**
  * Turn a generated badge line back into badges. Returns null unless the line holds only Shields.io badges.
  * An unchanged line keeps the current badges exactly (ids and text); an edited line is parsed best effort.
  */
@@ -37,13 +65,13 @@ function parseBadgeLine(line: string, currentBadges: ReadmeBadge[]): ReadmeBadge
   const matches = [...trimmed.matchAll(SHIELDS_BADGE_PATTERN)]
   if (matches.length === 0 || trimmed.replace(SHIELDS_BADGE_PATTERN, '').trim() !== '') return null
   return matches.map((match, index) => {
-    const parts = match[1].split('-')
-    const color = decodeComponent(parts.pop() ?? '')
-    const label = decodeComponent(parts.shift() ?? '')
+    const parts = splitBadgePath(match[1])
+    const color = decodeBadgeSegment(parts.pop() ?? '')
+    const label = decodeBadgeSegment(parts.shift() ?? '')
     return {
       id: currentBadges[index]?.id ?? crypto.randomUUID(),
       label,
-      message: decodeComponent(parts.join('-')),
+      message: decodeBadgeSegment(parts.join('-')),
       color,
       ...(match[2] ? { link: decodeComponent(match[2]) } : {}),
     }

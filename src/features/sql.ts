@@ -150,7 +150,23 @@ export function sqlLiteral(value: unknown, dialect: SqlDialect): string {
   return sqlValue(value, dialect)
 }
 
-function readSqlSegment(input: string, start: number): number {
+/** True when the quote at `start` opens a PostgreSQL escape string (`E'...'`), not an identifier ending in E. */
+function isEscapeStringStart(input: string, start: number): boolean {
+  return (input[start - 1] === 'E' || input[start - 1] === 'e') && !/[A-Za-z0-9_$]/.test(input[start - 2] ?? '')
+}
+
+/**
+ * Whether a backslash escapes the next character inside the single-quoted string at `start`.
+ * MySQL: always. PostgreSQL: only in E'...' strings. T-SQL: never. Without a dialect the
+ * DDL splitter keeps its historical behaviour of always skipping escaped characters.
+ */
+function backslashEscapesIn(input: string, start: number, dialect?: SqlDialect): boolean {
+  if (!dialect || dialect === 'mysql') return true
+  if (dialect === 'postgresql') return isEscapeStringStart(input, start)
+  return false
+}
+
+function readSqlSegment(input: string, start: number, dialect?: SqlDialect): number {
   const quote = input[start]
   if (quote === '$') {
     const delimiter = input.slice(start).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)?.[0]
@@ -162,13 +178,14 @@ function readSqlSegment(input: string, start: number): number {
   }
   if (quote !== "'" && quote !== '"' && quote !== '`' && quote !== '[') return start + 1
   const closing = quote === '[' ? ']' : quote
+  const backslashEscapes = quote === "'" && backslashEscapesIn(input, start, dialect)
   let index = start + 1
   while (index < input.length) {
     if (input[index] === closing) {
       if (quote !== '[' && input[index + 1] === closing) { index += 2; continue }
       return index + 1
     }
-    if (quote === "'" && input[index] === '\\' && index + 1 < input.length) index += 2
+    if (backslashEscapes && input[index] === '\\' && index + 1 < input.length) index += 2
     else index++
   }
   throw new Error('Unclosed SQL quoted value or identifier.')
@@ -191,8 +208,9 @@ export function previewSqlParameters(query: string, parametersInput: string, dia
   let output = ''
   for (let index = 0; index < query.length;) {
     const character = query[index]
-    if (character === "'" || character === '"' || character === '`' || character === '[' || (character === '$' && /^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/.test(query.slice(index)))) {
-      const end = readSqlSegment(query, index)
+    // `[` is a bracketed identifier only in T-SQL; PostgreSQL uses it for array subscripts.
+    if (character === "'" || character === '"' || character === '`' || (character === '[' && dialect === 'transactsql') || (character === '$' && /^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/.test(query.slice(index)))) {
+      const end = readSqlSegment(query, index, dialect)
       output += query.slice(index, end)
       index = end
       continue
@@ -346,6 +364,8 @@ export function minifySql(input: string): string {
   }
   const readQuoted = (delimiter: string, escapeDoubled = true) => {
     const start = index
+    // Standard SQL: backslash is literal, except inside PostgreSQL E'...' strings.
+    const backslashEscapes = delimiter === "'" && isEscapeStringStart(input, start)
     let closed = false
     index++
     while (index < input.length) {
@@ -355,7 +375,7 @@ export function minifySql(input: string): string {
         closed = true
         break
       }
-      if (input[index] === '\\' && delimiter === "'" && index + 1 < input.length) index += 2
+      if (backslashEscapes && input[index] === '\\' && index + 1 < input.length) index += 2
       else index++
     }
     if (!closed) throw new Error('Unclosed SQL quoted value or identifier.')

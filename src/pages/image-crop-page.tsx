@@ -15,6 +15,8 @@ import {
   clampFreeAngle,
   exportFileName,
   fitAspectRatioKeepingArea,
+  flipInScreenAxes,
+  mapCropToTransform,
   moveCropRect,
   normalizeQuarterTurns,
   renderCropToBlob,
@@ -23,6 +25,9 @@ import {
   resolveExportMimeType,
   rotatedBoundingSize,
   totalRotation,
+  validateCropFile,
+  validateCropOutput,
+  validateCropSourceSize,
   validateOutputSize,
   type CropCorner,
   type CropRect,
@@ -88,14 +93,6 @@ function rotatedImageStyle(natural: ImageBounds, bounding: ImageBounds, transfor
   }
 }
 
-/** Maps a crop proportionally into new bounds (after a rotation change) and re-applies the ratio lock. */
-function rescaleCrop(rect: CropRect, from: ImageBounds, to: ImageBounds, ratio: number | null): CropRect {
-  const scaleX = to.width / from.width
-  const scaleY = to.height / from.height
-  const scaled = { x: rect.x * scaleX, y: rect.y * scaleY, width: rect.width * scaleX, height: rect.height * scaleY }
-  return ratio ? applyAspectRatio(scaled, ratio, to) : clampCropRect(scaled, to)
-}
-
 export function ImageCropPage() {
   const [fileName, setFileName] = useState('')
   const [fileType, setFileType] = useState('')
@@ -146,6 +143,8 @@ export function ImageCropPage() {
   const fixedOutput = preset ? { width: preset.width, height: preset.height } : outputMode === 'custom' && !customError ? customSize : null
   const ratio = fixedOutput ? fixedOutput.width / fixedOutput.height : RATIO_OPTIONS.find((option) => option.value === ratioKey)?.ratio ?? null
   const outputSize: ImageBounds | null = fixedOutput ?? (cropRect ? { width: Math.max(1, Math.round(cropRect.width)), height: Math.max(1, Math.round(cropRect.height)) } : null)
+  // Checked before rendering so oversized exports (Safari's canvas limit) get a clear message instead of a failed render.
+  const outputError = customError ?? (fixedOutput ? validateOutputSize(fixedOutput) : outputSize ? validateCropOutput(outputSize) : null)
 
   const clearPreview = () => {
     if (preview) URL.revokeObjectURL(preview.url)
@@ -158,8 +157,9 @@ export function ImageCropPage() {
   }
 
   const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.')
+    const fileError = validateCropFile(file)
+    if (fileError) {
+      setError(fileError)
       return
     }
     if (imageSrc) URL.revokeObjectURL(imageSrc)
@@ -177,6 +177,12 @@ export function ImageCropPage() {
     const img = imgRef.current
     if (!img || naturalSize) return
     const size: ImageBounds = { width: img.naturalWidth, height: img.naturalHeight }
+    const sourceError = validateCropSourceSize(size)
+    if (sourceError) {
+      handleClear()
+      setError(sourceError)
+      return
+    }
     const safe = boundsFor(size, IDENTITY_TRANSFORM)
     setNaturalSize(size)
     setCropRect(initialCrop({ width: safe.width, height: safe.height }, ratio))
@@ -231,12 +237,17 @@ export function ImageCropPage() {
     if (!validateOutputSize(next) && start && cropBounds) setCropRect(fitAspectRatioKeepingArea(start, next.width / next.height, cropBounds))
   }
 
+  // Quarter turns carry the crop with the image; free-angle changes keep its size and center (see mapCropToTransform).
   const updateTransform = (next: ImageTransform) => {
-    if (!naturalSize || !cropBounds) return
-    const nextSafe = boundsFor(naturalSize, next)
-    const nextBounds = { width: nextSafe.width, height: nextSafe.height }
+    if (!naturalSize) return
     setTransform(next)
-    if (cropRect) setCropRect(rescaleCrop(cropRect, cropBounds, nextBounds, ratio))
+    if (cropRect) setCropRect(mapCropToTransform(cropRect, naturalSize, transform, next, ratio))
+  }
+
+  // Flips mirror the screen; the bounding box keeps its size, so the crop stays where it is.
+  const handleFlip = (axis: 'horizontal' | 'vertical') => {
+    if (!naturalSize) return
+    setTransform(flipInScreenAxes(transform, axis))
   }
 
   const handleCropDimension = (dimension: 'width' | 'height', value: string) => {
@@ -308,8 +319,8 @@ export function ImageCropPage() {
 
   const renderResult = async (): Promise<CropResult | null> => {
     if (!imgRef.current || !cropRect || !naturalSize || !safeRect || !outputSize) return null
-    if (customError) {
-      setError(customError)
+    if (outputError) {
+      setError(outputError)
       return null
     }
     const mimeType = resolveExportMimeType(fileType)
@@ -460,8 +471,8 @@ export function ImageCropPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => updateTransform({ ...transform, quarterTurns: normalizeQuarterTurns(transform.quarterTurns - 1) })} disabled={!ready} aria-label="Rotate 90° counterclockwise"><RotateCcw />90°</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => updateTransform({ ...transform, quarterTurns: normalizeQuarterTurns(transform.quarterTurns + 1) })} disabled={!ready} aria-label="Rotate 90° clockwise"><RotateCw />90°</Button>
-              <Button type="button" size="sm" variant="outline" aria-pressed={transform.flipH} onClick={() => updateTransform({ ...transform, flipH: !transform.flipH })} disabled={!ready} className={cn(transform.flipH && 'bg-accent text-accent-foreground')}><FlipHorizontal2 />Flip H</Button>
-              <Button type="button" size="sm" variant="outline" aria-pressed={transform.flipV} onClick={() => updateTransform({ ...transform, flipV: !transform.flipV })} disabled={!ready} className={cn(transform.flipV && 'bg-accent text-accent-foreground')}><FlipVertical2 />Flip V</Button>
+              <Button type="button" size="sm" variant="outline" aria-pressed={transform.flipH} onClick={() => handleFlip('horizontal')} disabled={!ready} className={cn(transform.flipH && 'bg-accent text-accent-foreground')}><FlipHorizontal2 />Flip H</Button>
+              <Button type="button" size="sm" variant="outline" aria-pressed={transform.flipV} onClick={() => handleFlip('vertical')} disabled={!ready} className={cn(transform.flipV && 'bg-accent text-accent-foreground')}><FlipVertical2 />Flip V</Button>
               <Button type="button" size="sm" variant="outline" aria-pressed={showGrid} onClick={() => setShowGrid((value) => !value)} className={cn(showGrid && 'bg-accent text-accent-foreground')}><Grid3x3 />Grid</Button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -550,9 +561,10 @@ export function ImageCropPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => void runExport('preview')} disabled={!ready || busy || Boolean(customError)}><Eye />Preview</Button>
-                <Button type="button" onClick={() => void runExport('download')} disabled={!ready || busy || Boolean(customError)}><Download />Download</Button>
+                <Button type="button" variant="outline" onClick={() => void runExport('preview')} disabled={!ready || busy || Boolean(outputError)}><Eye />Preview</Button>
+                <Button type="button" onClick={() => void runExport('download')} disabled={!ready || busy || Boolean(outputError)}><Download />Download</Button>
               </div>
+              {outputError && !customError && <p className="text-xs text-destructive">{outputError}</p>}
             </section>
           </aside>
         </div>

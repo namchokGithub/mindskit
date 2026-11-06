@@ -131,3 +131,23 @@ test('minifier never joins tokens into a comment marker', () => {
   assert.equal(minifySql('SELECT 5 - -3 AS x'), 'SELECT 5- -3 AS x')
   assert.equal(minifySql('SELECT 10 / *'), 'SELECT 10/ *')
 })
+
+test('backslash escapes quotes only in MySQL strings and PostgreSQL E-strings', () => {
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'C:\\' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = 'C:\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = E'It\\'s ?' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = E'It\\'s ?' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = e'C:\\\\' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = e'C:\\\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'C:\\' AND id = ?", '[5]', 'transactsql'), "SELECT * FROM t WHERE p = 'C:\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'It\\'s ?' AND id = ?", '[5]', 'mysql'), "SELECT * FROM t WHERE p = 'It\\'s ?' AND id = 5")
+  assert.throws(() => previewSqlParameters("SELECT 'It\\'s' WHERE id = ?", '[5]', 'postgresql'), /Unclosed SQL quoted/)
+})
+
+test('minifier treats backslash as literal except inside E-strings', () => {
+  assert.equal(minifySql("SELECT  'C:\\',  'a  b'"), "SELECT 'C:\\','a  b'")
+  assert.equal(minifySql("SELECT  E'It\\'s  here',  'a  b'"), "SELECT E'It\\'s  here','a  b'")
+  assert.equal(minifySql("SELECT  type'x\\',  'a  b'"), "SELECT type'x\\','a  b'")
+})
+
+test('PostgreSQL parameter preview substitutes inside array subscripts', () => {
+  assert.equal(previewSqlParameters('SELECT arr[$1] FROM t', '[2]', 'postgresql'), 'SELECT arr[2] FROM t')
+  assert.equal(previewSqlParameters('SELECT [col ?] FROM t WHERE id = ?', '[3]', 'transactsql'), 'SELECT [col ?] FROM t WHERE id = 3')
+})

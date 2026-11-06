@@ -26,7 +26,7 @@ export function convertBase64(input: string, operation: string): string {
       ? new TextDecoder().decode(base64ToBytes(input))
       : bytesToBase64(new TextEncoder().encode(input))
   } catch {
-    return 'Invalid Base64 input.'
+    throw new Error('Invalid Base64 input.')
   }
 }
 
@@ -34,7 +34,7 @@ export function convertUrl(input: string, operation: string): string {
   try {
     return operation === 'decode' ? decodeURIComponent(input) : encodeURIComponent(input)
   } catch {
-    return 'Invalid URL-encoded input.'
+    throw new Error('Invalid URL-encoded input.')
   }
 }
 
@@ -50,7 +50,7 @@ export function convertHtml(input: string, operation: string): string {
 export function convertTimestamp(input: string, operation: string, _prefix?: string, _suffix?: string, timeZone = 'browser'): string {
   const trimmed = input.trim()
   const date = !trimmed ? new Date(Number.NaN) : operation === 'to-date' ? new Date(/^\d{13}$/.test(trimmed) ? Number(trimmed) : Number(trimmed) * 1000) : new Date(trimmed)
-  if (Number.isNaN(date.getTime())) return 'Enter a valid timestamp or date.'
+  if (Number.isNaN(date.getTime())) throw new Error('Enter a valid timestamp or date.')
   return operation === 'to-date' ? formatTimestampForTimeZone(date, timeZone === 'browser' ? undefined : timeZone) : String(Math.floor(date.getTime() / 1000))
 }
 

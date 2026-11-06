@@ -133,12 +133,12 @@ export function AppShell() {
           <div className="ml-auto flex items-center gap-2">
             <div className="hidden min-w-0 items-center gap-1 xl:flex">
               {topCategories.map((category) => (
-                <a
+                <Link
                   key={category.id}
-                  href={`/#${category.id}`}
+                  to={{ pathname: "/", hash: `#${category.id}` }}
                   className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                   {category.name}
-                </a>
+                </Link>
               ))}
               {favoriteTool && (
                 <Link

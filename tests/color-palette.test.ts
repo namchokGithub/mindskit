@@ -37,6 +37,20 @@ test('does not treat short words made of HEX letters as colors without #', () =>
   assert.deepEqual(extractColorsFromText('Please add more contrast, the bad abc fad bed look\nAccent: abc'), [])
 })
 
+test('skips lowercase English words spelled with HEX letters, with or without #', () => {
+  assert.deepEqual(extractColorsFromText('Please #add more, facade decade'), [])
+  assert.deepEqual(extractColorsFromText('#bad #fed #ace effaced beaded #deface'), [])
+})
+
+test('keeps uppercase HEX-letter words as colors', () => {
+  assert.deepEqual(extractColorsFromText('#ADD'), [{ name: 'Color 1', hex: '#ADD' }])
+  assert.deepEqual(extractColorsFromText('Wall: FACADE'), [{ name: 'Wall', hex: '#FACADE' }])
+})
+
+test('a line of HEX-letter words still names the color below it', () => {
+  assert.deepEqual(extractColorsFromText('decade facade\n#D5C49A'), [{ name: 'decade facade', hex: '#D5C49A' }])
+})
+
 test('ignores list markers before a color and uses the label above instead', () => {
   assert.deepEqual(extractColorsFromText('Primary Gold\n1. #D5C49A\n\nSoft Pearl\n2) #F5F0E4\n\nInk\n- #111\n\n* #222\n\n3. Accent #abc'), [
     { name: 'Primary Gold', hex: '#D5C49A' },

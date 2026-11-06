@@ -4,6 +4,12 @@ export type PaletteColor = { name: string; hex: string }
 
 // `#RGB` and `#RRGGBB`, or `RRGGBB` without `#`. Three digits always need `#`, so words like add, bad, or abc are not colors.
 const hexPattern = /(?<![\w&#])(?:#(?:[0-9a-f]{6}|[0-9a-f]{3})|[0-9a-f]{6})(?![0-9a-z_])/gi
+// Common English words spelled only with a–f. A lowercase match equal to one of these (with or without `#`) is prose,
+// not a color; the same letters in uppercase, such as #ADD or #FACADE, still count as a color.
+const hexLetterWords = new Set([
+  'abbe', 'accede', 'ace', 'add', 'bad', 'bead', 'beaded', 'bedded', 'bed', 'beef', 'babe', 'cab', 'cafe', 'dad', 'deaf',
+  'dead', 'decade', 'deed', 'deface', 'ebb', 'efface', 'fab', 'face', 'facade', 'fad', 'fade', 'faded', 'fed', 'feed',
+])
 const nameEdgeCharacters = /^[\s|:*_`>#\-–—=•·,.;()[\]]+|[\s|:*_`>#\-–—=•·,.;()[\]]+$/g
 // Ordered/unordered list markers such as "1.", "1)", "- ", "* " that label a list item, not a color.
 const leadingListMarker = /^\s*(?:\d+[.)]|[-*+•])(?=\s|$)/
@@ -24,12 +30,17 @@ function cleanName(value: string): string {
   return cleaned.length > maxNameLength ? `${cleaned.slice(0, maxNameLength - 1).trimEnd()}…` : cleaned
 }
 
+function isHexLetterWord(code: string): boolean {
+  const digits = code.replace(/^#/, '')
+  return digits === digits.toLowerCase() && hexLetterWords.has(digits)
+}
+
 /** The first line of the paragraph above the color, stopping at a blank line or another color line. */
 function nameFromLinesAbove(lines: string[], lineIndex: number): string {
   let name = ''
   for (let index = lineIndex - 1; index >= 0; index -= 1) {
     const line = lines[index]
-    if (!line.trim() || line.search(hexPattern) !== -1) break
+    if (!line.trim() || [...line.matchAll(hexPattern)].some((match) => !isHexLetterWord(match[0]))) break
     const cleaned = cleanName(line)
     if (cleaned) name = cleaned
   }
@@ -43,6 +54,7 @@ export function extractColorsFromText(text: string): PaletteColor[] {
   lines.forEach((line, lineIndex) => {
     let previousEnd = 0
     for (const match of line.matchAll(hexPattern)) {
+      if (isHexLetterWord(match[0])) continue
       const start = match.index ?? 0
       const sameLineName = cleanName(line.slice(previousEnd, start))
       const name = sameLineName || (previousEnd === 0 ? nameFromLinesAbove(lines, lineIndex) : '')
