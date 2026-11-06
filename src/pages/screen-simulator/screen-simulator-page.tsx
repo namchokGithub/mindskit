@@ -1,5 +1,5 @@
 import { Flag, ImagePlus, Pause, Play, RotateCcw, ShieldCheck, Shuffle, TriangleAlert, X } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
@@ -11,6 +11,7 @@ import { NOISE_TIMER_MINUTES, fillNoise, type NoiseColor } from '@/features/scre
 import {
   COLOR_PRESETS,
   MAX_CALL_MEMBERS,
+  MATRIX_CHARSETS,
   MAX_KELVIN,
   MIN_KELVIN,
   PRANK_CRACK_IMAGES,
@@ -22,12 +23,14 @@ import {
   grayHex,
   hexToRgbText,
   kelvinToHex,
+  matrixCharacters,
   parseMemberNames,
   parseScreenColor,
   pauseTimer,
   randomMemberNames,
   startTimer,
   timerElapsed,
+  type MatrixLanguage,
   type ProgressMode,
   type TimerState,
 } from '@/features/screen-simulator/screen'
@@ -254,6 +257,14 @@ export function ScreenSimulatorPage() {
   const [quoteInterval, setQuoteInterval] = useState(10)
   const [matrixSize, setMatrixSize] = useState(20)
   const [matrixSpeed, setMatrixSpeed] = useState(50)
+  const [matrixLanguages, setMatrixLanguages] = useState<MatrixLanguage[]>(['ja'])
+  const matrixChars = useMemo(() => matrixCharacters(matrixLanguages), [matrixLanguages])
+  const toggleMatrixLanguage = (language: MatrixLanguage, checked: boolean) =>
+    setMatrixLanguages((current) => {
+      const next = checked ? [...current, language] : current.filter((item) => item !== language)
+      // Keep at least one language so the rain never goes empty.
+      return next.length > 0 ? next : current
+    })
 
   // White noise
   const [noiseColor, setNoiseColor] = useState<NoiseColor>('white')
@@ -303,7 +314,7 @@ export function ScreenSimulatorPage() {
     else if (mode === 'clock') screen = <FlipClockScreen hour12={hour12} showSeconds={showSeconds} appearance={flipAppearance} />
     else if (mode === 'quotes') screen = <QuotesScreen language={quoteLanguage} intervalSeconds={quoteInterval} />
     else if (mode === 'no-signal') screen = <NoSignalScreen />
-    else if (mode === 'matrix') screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} />
+    else if (mode === 'matrix') screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} characters={matrixChars} />
     else if (mode === 'countdown') screen = <CountdownScreen totalMs={countdownTotal} state={countdownState} appearance={flipAppearance} />
     else if (mode === 'stopwatch') screen = <StopwatchScreen state={stopwatchState} laps={laps} appearance={flipAppearance} />
     else screen = <QrScreen content={qrContent} description={qrDescription} dark={qrDark} />
@@ -535,6 +546,18 @@ export function ScreenSimulatorPage() {
               <Field label={`Character size: ${matrixSize} px`}>
                 <input type="range" min={10} max={48} value={matrixSize} onChange={(event) => setMatrixSize(Number(event.target.value))} className="accent-primary" />
               </Field>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1.5 text-xs text-muted-foreground">Characters (mix any)</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(MATRIX_CHARSETS) as MatrixLanguage[]).map((language) => (
+                    <label key={language} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={matrixLanguages.includes(language)} onCheckedChange={(value) => toggleMatrixLanguage(language, value === true)} />
+                      {MATRIX_CHARSETS[language].label}
+                    </label>
+                  ))}
+                </div>
+                <span className="text-[0.7rem] text-muted-foreground">Digits 0–9 are always included.</span>
+              </fieldset>
               <Field label={`Speed: ${matrixSpeed} ms per frame`}>
                 <input type="range" min={20} max={200} step={5} value={matrixSpeed} onChange={(event) => setMatrixSpeed(Number(event.target.value))} className="accent-primary" />
               </Field>

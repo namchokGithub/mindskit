@@ -267,3 +267,26 @@ export const PRANK_CRACK_IMAGES = [
   { id: 'crack02', label: 'Crack 2', src: '/prank/crack02.png' },
   { id: 'crack03', label: 'Crack 3', src: '/prank/crack03.png' },
 ] as const
+
+export type MatrixLanguage = 'en' | 'th' | 'zh' | 'ja' | 'ko' | 'pt'
+
+/**
+ * Character pools for the Matrix rain. Thai uses consonants only (no combining vowels or tone marks, which cannot
+ * stand alone in a cell); Portuguese adds its accented capitals to the Latin alphabet.
+ */
+export const MATRIX_CHARSETS: Record<MatrixLanguage, { label: string; characters: string }> = {
+  en: { label: 'English', characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
+  th: { label: 'ไทย', characters: 'กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ' },
+  zh: { label: '中文', characters: '的一是不了人我在有他这中大来上国个到说们为子和你地出道也时年得就那要下以生会自着去之过家学对可里后小心多天能好都' },
+  ja: { label: '日本語', characters: 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンあいうえおかきくけこ' },
+  ko: { label: '한국어', characters: '가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추' },
+  pt: { label: 'Português', characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZÁÂÃÀÇÉÊÍÓÔÕÚ' },
+}
+
+export const MATRIX_DIGITS = '0123456789'
+
+/** Distinct characters (by code point) for the selected languages plus digits; Japanese when nothing is selected. */
+export function matrixCharacters(languages: readonly MatrixLanguage[]): string[] {
+  const selected = languages.length > 0 ? languages : (['ja'] as const)
+  return [...new Set(Array.from(selected.map((language) => MATRIX_CHARSETS[language].characters).join('') + MATRIX_DIGITS))]
+}

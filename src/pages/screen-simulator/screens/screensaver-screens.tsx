@@ -116,13 +116,12 @@ export function NoSignalScreen() {
   )
 }
 
-const MATRIX_CHARACTERS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789'
 
 /**
  * Falling-character rain. `fontSize` is in pixels on a 1080-pixel-tall screen and scales with the displayed height,
  * so the preview and full screen look the same; `speedMs` is the delay between frames.
  */
-export function MatrixScreen({ fontSize, speedMs }: { fontSize: number; speedMs: number }) {
+export function MatrixScreen({ fontSize, speedMs, characters }: { fontSize: number; speedMs: number; characters: string[] }) {
   const [canvasRef, size] = useDisplayedSize<HTMLCanvasElement>()
 
   useEffect(() => {
@@ -142,7 +141,7 @@ export function MatrixScreen({ fontSize, speedMs }: { fontSize: number; speedMs:
       context.fillRect(0, 0, canvas.width, canvas.height)
       context.font = `${cell}px monospace`
       for (let column = 0; column < columns; column += 1) {
-        const character = MATRIX_CHARACTERS[Math.floor(Math.random() * MATRIX_CHARACTERS.length)]
+        const character = characters[Math.floor(Math.random() * characters.length)]
         const y = drops[column] * cell
         context.fillStyle = Math.random() > 0.975 ? '#D7FFD9' : '#00FF41'
         if (y >= 0) context.fillText(character, column * cell, y)
@@ -151,7 +150,7 @@ export function MatrixScreen({ fontSize, speedMs }: { fontSize: number; speedMs:
     }
     const id = window.setInterval(draw, Math.max(16, speedMs))
     return () => window.clearInterval(id)
-  }, [canvasRef, size.width, size.height, fontSize, speedMs])
+  }, [canvasRef, size.width, size.height, fontSize, speedMs, characters])
 
   return <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full bg-black" />
 }
