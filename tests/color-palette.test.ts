@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  copyablePaletteColors,
   extractColorsFromText,
   formatPaletteForCopy,
   isValidHexColor,
@@ -74,4 +75,17 @@ test('formats the palette for copying and picks readable label colors', () => {
   )
   assert.equal(readableTextColor('#F5F0E4'), '#000000')
   assert.equal(readableTextColor('#111'), '#FFFFFF')
+})
+
+test('copies valid colors with the same Color N fallback the cards show', () => {
+  assert.deepEqual(copyablePaletteColors([
+    { name: '  ', hex: '#abc' },
+    { name: 'Broken', hex: '#12' },
+    { name: '', hex: 'd5c49a' },
+    { name: 'Ink', hex: '#111111' },
+  ]), [
+    { name: 'Color 1', hex: '#ABC' },
+    { name: 'Color 3', hex: '#D5C49A' },
+    { name: 'Ink', hex: '#111111' },
+  ])
 })

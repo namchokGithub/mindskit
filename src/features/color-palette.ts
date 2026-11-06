@@ -53,6 +53,17 @@ export function extractColorsFromText(text: string): PaletteColor[] {
   return colors
 }
 
+/**
+ * Palette items ready to copy: invalid HEX values are skipped, HEX is normalized, and a blank name falls back to
+ * `Color N`, where N is the item's position in the full list (the same label its card shows).
+ */
+export function copyablePaletteColors(items: readonly PaletteColor[]): PaletteColor[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isValidHexColor(item.hex))
+    .map(({ item, index }) => ({ name: item.name.trim() || `Color ${index + 1}`, hex: normalizeHexColor(item.hex) }))
+}
+
 export function formatPaletteForCopy(colors: PaletteColor[]): string {
   return colors.map((color) => `${color.name} — ${color.hex}`).join('\n')
 }

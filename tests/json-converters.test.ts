@@ -24,3 +24,8 @@ test('JSON to Go escapes quotes and backticks in struct tags', () => {
   assert.equal(jsonToGoStruct('{"a\\"b":1}', 'Root'), 'type Root struct {\n\tAB int `json:"a\\"b"`\n}')
   assert.equal(jsonToGoStruct('{"a`b":1}', 'Root'), 'type Root struct {\n\tAB int "json:\\"a`b\\""\n}')
 })
+
+test('JSON to Go warns when a key contains a comma', () => {
+  const output = jsonToGoStruct('{"a,b":1}', 'Root')
+  assert.match(output, /\/\/ JSON key "a,b" contains a comma; encoding\/json cannot map it with a struct tag\./)
+})

@@ -38,6 +38,7 @@ export function ImageRemoveBackgroundPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const objectUrlsRef = useRef({ imageSrc: '', resultUrl: '' })
+  const mountedRef = useRef(true)
 
   useEffect(() => {
     objectUrlsRef.current = { imageSrc, resultUrl }
@@ -45,6 +46,7 @@ export function ImageRemoveBackgroundPage() {
 
   // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
   useEffect(() => () => {
+    mountedRef.current = false
     const { imageSrc: latestImageSrc, resultUrl: latestResultUrl } = objectUrlsRef.current
     if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
     if (latestResultUrl) URL.revokeObjectURL(latestResultUrl)
@@ -81,6 +83,8 @@ export function ImageRemoveBackgroundPage() {
     setProgress(null)
     try {
       const blob = await removeImageBackground(file, (key, current, total) => setProgress({ key, current, total }))
+      // The page was left while the model was running: nothing will show or revoke this result.
+      if (!mountedRef.current) return
       if (resultUrl) URL.revokeObjectURL(resultUrl)
       setResultUrl(URL.createObjectURL(blob))
     } catch (cause) {

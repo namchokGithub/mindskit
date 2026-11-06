@@ -253,6 +253,19 @@ export function ImageCropPage() {
     updateTransform({ ...transform, angle: clampFreeAngle(parsed) })
   }
 
+  // While typing, the field keeps the typed text; say so when the value actually applied was clamped.
+  const appliedCropHint = (['width', 'height'] as const)
+    .filter((dimension) => {
+      const typed = Number(drafts[dimension])
+      return drafts[dimension] !== undefined && drafts[dimension] !== '' && Number.isFinite(typed) && cropRect !== null && Math.round(typed) !== Math.round(cropRect[dimension])
+    })
+    .map((dimension) => `Applied ${dimension}: ${Math.round(cropRect![dimension])} px (limited by the image)`)
+    .join(' · ')
+  const typedAngle = Number(drafts.angle)
+  const appliedAngleHint = drafts.angle !== undefined && drafts.angle !== '' && drafts.angle !== '-' && Number.isFinite(typedAngle) && typedAngle !== transform.angle
+    ? `Applied ${transform.angle}° (range ±${MAX_FREE_ANGLE}°)`
+    : ''
+
   const clearDraft = (field: 'angle' | 'width' | 'height') => {
     setDrafts((current) => ({ ...current, [field]: undefined }))
   }
@@ -459,6 +472,7 @@ export function ImageCropPage() {
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input type="number" min={-MAX_FREE_ANGLE} max={MAX_FREE_ANGLE} step={0.1} value={drafts.angle ?? transform.angle} onChange={(event) => handleAngleInput(event.target.value)} onBlur={() => clearDraft('angle')} disabled={!ready} aria-label="Rotation angle in degrees" className={cn(fieldClass, 'w-20')} />°
               </label>
+              {appliedAngleHint && <span className="text-[0.7rem] text-muted-foreground">{appliedAngleHint}</span>}
               <Button type="button" size="sm" variant="ghost" onClick={() => updateTransform(IDENTITY_TRANSFORM)} disabled={!ready || (transform.angle === 0 && transform.quarterTurns === 0 && !transform.flipH && !transform.flipV)}><Undo2 />Reset</Button>
             </div>
           </section>
@@ -480,6 +494,7 @@ export function ImageCropPage() {
                 <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop width (px)<input type="number" min={1} value={drafts.width ?? (cropRect ? Math.round(cropRect.width) : '')} onChange={(event) => handleCropDimension('width', event.target.value)} onBlur={() => clearDraft('width')} disabled={!ready} className={fieldClass} /></label>
                 <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop height (px)<input type="number" min={1} value={drafts.height ?? (cropRect ? Math.round(cropRect.height) : '')} onChange={(event) => handleCropDimension('height', event.target.value)} onBlur={() => clearDraft('height')} disabled={!ready} className={fieldClass} /></label>
               </div>
+              {appliedCropHint && <p className="text-[0.7rem] text-muted-foreground">{appliedCropHint}</p>}
               <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
                 Output size
                 <Select value={outputMode} onValueChange={handleOutputChange}>

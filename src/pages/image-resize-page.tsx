@@ -162,7 +162,8 @@ export function ImageResizePage() {
       setJobs((current) => current.map((job) => {
         if (job.mode !== 'pixels') return job
         const size = resolveJobSize(job)
-        return size ? { ...job, width: String(size.width), height: String(size.height) } : job
+        // Without a valid size the old height is meaningless, so clear it rather than reveal a stale value.
+        return size ? { ...job, width: String(size.width), height: String(size.height) } : { ...job, height: '' }
       }))
     }
     setKeepAspectRatio(checked)

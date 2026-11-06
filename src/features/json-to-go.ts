@@ -99,6 +99,8 @@ function defineStruct(shape: Extract<Shape, { kind: 'object' }>, suggestedName: 
     let count = 2
     while (fieldNames.has(fieldName)) fieldName = `${preferredField}${count++}`
     fieldNames.add(fieldName)
+    // A tag name stops at the first comma (the rest are options), so encoding/json cannot map such keys.
+    if (key.includes(',')) lines.push(`\t// JSON key ${JSON.stringify(key)} contains a comma; encoding/json cannot map it with a struct tag.`)
     lines.push(`\t${fieldName} ${shouldPointer ? `*${type}` : type} ${structTag(`${key}${property.optional ? ',omitempty' : ''}`)}`)
   }
   generator.declarations.push(`type ${name} struct {\n${lines.join('\n')}\n}`)
