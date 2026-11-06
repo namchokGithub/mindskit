@@ -21,7 +21,7 @@ import { RomanNumeralDatePage } from '@/pages/roman-numeral-date-page'
 import { StrongPasswordGeneratorPage } from '@/pages/strong-password-generator-page'
 import { JsonValidatorPage } from '@/pages/json-validator-page'
 import { JwtDecoderPage } from '@/pages/jwt-decoder-page'
-import { BarcodePage, QrCodePage } from '@/pages/code-generators-pages'
+import { BarcodePage } from '@/pages/code-generators-pages'
 import { JsonToCsvPage, JsonToYamlPage } from '@/pages/json-converters-pages'
 import { JsonDataGeneratorPage } from '@/pages/json-data-generator-page'
 import { FaviconGeneratorPage } from '@/pages/favicon-generator-page'
@@ -31,8 +31,14 @@ import { ImageResizePage } from '@/pages/image-resize-page'
 const ImageRemoveBackgroundPage = lazy(() =>
   import('@/pages/image-remove-background-page').then((module) => ({ default: module.ImageRemoveBackgroundPage })),
 )
+const QrCodePage = lazy(() =>
+  import('@/pages/qr-code-page').then((module) => ({ default: module.QrCodePage })),
+)
 const ReadmeBuilderPage = lazy(() =>
   import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
+)
+const ScreenSimulatorPage = lazy(() =>
+  import('@/pages/screen-simulator/screen-simulator-page').then((module) => ({ default: module.ScreenSimulatorPage })),
 )
 const ScreenshotBeautifierPage = lazy(() =>
   import('@/pages/screenshot-beautifier-page').then((module) => ({ default: module.ScreenshotBeautifierPage })),
@@ -41,6 +47,7 @@ import { SqlFormatterPage, SqlInsertPage, SqlMinifierPage } from '@/pages/sql-to
 import { CreateTableTypesPage, SqlParametersPage, SqlSyntaxCheckerPage } from '@/pages/sql-advanced-pages'
 import { SqlInClausePage } from '@/pages/sql-in-clause-page'
 import { LicensePage } from '@/pages/license-page'
+import { NotFoundPage } from '@/pages/not-found-page'
 import { PrivacyPage } from '@/pages/privacy-page'
 import { Base64Page, HtmlEncodeDecodePage, RandomStringPage, UnixTimestampPage, UrlEncodeDecodePage, UuidPage } from '@/pages/quick-tools-pages'
 import { XmlFormatterPage } from '@/pages/xml-formatter-page'
@@ -62,12 +69,12 @@ export default function App() {
           <Route path="/formatters/json-sorter" element={<JsonSorterPage />} />
           <Route path="/formatters/json-compare" element={<JsonComparePage />} />
           <Route path="/json/generator" element={<JsonDataGeneratorPage />} />
-          <Route path="/formatters/xml" element={<XmlFormatterPage />} />
-          <Route path="/xml/minify" element={<XmlFormatterPage title="XML Minify" description="Compact XML and validate it before sharing." storageKey="xml-minifier" />} />
+          <Route path="/formatters/xml" element={<XmlFormatterPage key="xml-formatter" />} />
+          <Route path="/xml/minify" element={<XmlFormatterPage title="XML Minify" description="Compact XML and validate it before sharing." storageKey="xml-minifier" key="xml-minifier" />} />
           <Route path="/xml/viewer" element={<XmlViewerPage />} />
           <Route path="/xml/validator" element={<XmlValidatorPage />} />
-          <Route path="/xml/wsdl-formatter" element={<XmlFormatterPage title="WSDL Formatter" description="Beautify and validate WSDL XML documents." storageKey="wsdl-formatter" />} />
-          <Route path="/xml/soap-formatter" element={<XmlFormatterPage title="SOAP Formatter" description="Beautify and validate SOAP XML messages." storageKey="soap-formatter" />} />
+          <Route path="/xml/wsdl-formatter" element={<XmlFormatterPage title="WSDL Formatter" description="Beautify and validate WSDL XML documents." storageKey="wsdl-formatter" key="wsdl-formatter" />} />
+          <Route path="/xml/soap-formatter" element={<XmlFormatterPage title="SOAP Formatter" description="Beautify and validate SOAP XML messages." storageKey="soap-formatter" key="soap-formatter" />} />
           <Route path="/sql/formatter" element={<SqlFormatterPage />} />
           <Route path="/sql/minify" element={<SqlMinifierPage />} />
           <Route path="/sql/parameters" element={<SqlParametersPage />} />
@@ -94,7 +101,7 @@ export default function App() {
           <Route path="/encode-decode/html" element={<HtmlEncodeDecodePage />} />
           <Route path="/encode-decode/jwt" element={<JwtDecoderPage />} />
           <Route path="/generators/uuid" element={<UuidPage />} />
-          <Route path="/generators/qr-code" element={<QrCodePage />} />
+          <Route path="/generators/qr-code" element={<Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}><QrCodePage /></Suspense>} />
           <Route path="/generators/barcode" element={<BarcodePage />} />
           <Route path="/generators/random-string" element={<RandomStringPage />} />
           <Route path="/generators/strong-password" element={<StrongPasswordGeneratorPage />} />
@@ -128,6 +135,14 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="/screen-simulator"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <ScreenSimulatorPage />
+              </Suspense>
+            }
+          />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/license" element={<LicensePage />} />
           {tools
@@ -135,6 +150,7 @@ export default function App() {
             .map((tool) => (
               <Route key={tool.id} path={tool.path} element={<ComingSoonPage tool={tool} />} />
             ))}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
       <Toaster theme={mode} position="bottom-right" richColors closeButton />

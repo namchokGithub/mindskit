@@ -44,50 +44,64 @@ export function TextTransformPage(config: TextTransformPageConfig) {
   const [suffix, setSuffix] = useState('')
   const [timeZone, setTimeZone] = useState('browser')
   const [hasRun, setHasRun] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { confirm, dialog } = useLargeInputConfirmation()
   const ActionIcon = config.actionIcon
   const InputActionIcon = config.inputAction?.icon
 
+  // Process functions throw an Error for invalid input; show its message and clear the stale result.
+  const apply = (nextInput: string, nextOption: string, nextPrefix: string, nextSuffix: string, nextTimeZone: string) => {
+    try {
+      setOutput(config.process(nextInput, nextOption, nextPrefix, nextSuffix, nextTimeZone))
+      setError(null)
+    } catch (caught) {
+      setOutput('')
+      setError(caught instanceof Error && caught.message ? caught.message : `${config.actionLabel} failed.`)
+    }
+  }
+
   const run = (nextInput = input, nextOption = option) => {
-    setOutput(config.process(nextInput, nextOption, prefix, suffix, timeZone))
+    apply(nextInput, nextOption, prefix, suffix, timeZone)
     setHasRun(true)
   }
 
   const handleInputChange = (next: string) => {
     setInput(next)
     setHasRun(false)
+    setError(null)
   }
 
   const handleOptionChange = (next: string) => {
     setOption(next)
-    if (hasRun) run(input, next)
+    if (hasRun) confirm(input, () => run(input, next))
   }
 
   const handlePrefixChange = (value: string) => {
     setPrefix(value)
-    if (hasRun) setOutput(config.process(input, option, value, suffix, timeZone))
+    if (hasRun) confirm(input, () => apply(input, option, value, suffix, timeZone))
   }
 
   const handleSuffixChange = (value: string) => {
     setSuffix(value)
-    if (hasRun) setOutput(config.process(input, option, prefix, value, timeZone))
+    if (hasRun) confirm(input, () => apply(input, option, prefix, value, timeZone))
   }
 
   const handleTimeZoneChange = (value: string) => {
     setTimeZone(value)
-    if (hasRun) setOutput(config.process(input, option, prefix, suffix, value))
+    if (hasRun) confirm(input, () => apply(input, option, prefix, suffix, value))
   }
 
   const handleSample = () => {
     const sample = config.samples?.[option] ?? config.sample
     setInput(sample)
-    run(sample)
+    confirm(sample, () => run(sample))
   }
 
   const handleClear = () => {
     setInput('')
     setOutput('')
     setHasRun(false)
+    setError(null)
   }
 
   const handleInputAction = () => {
@@ -139,18 +153,18 @@ export function TextTransformPage(config: TextTransformPageConfig) {
           </div>
 
           <div className="flex min-h-65 min-w-0 flex-col bg-muted/20 lg:min-h-0">
-            <div className="flex items-center justify-between px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Output</span><CopyButton value={hasRun ? output : ''} /></div>
+            <div className="flex items-center justify-between px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Output</span><CopyButton value={hasRun && !error ? output : ''} /></div>
             {config.outputPreview ? (
               <div className="min-h-[12rem] max-h-[32rem] w-full overflow-auto bg-muted/30 p-4">
-                {hasRun ? config.outputPreview(output) : <span className="text-sm text-muted-foreground">Result will appear here.</span>}
+                {hasRun && !error ? config.outputPreview(output) : <span className="text-sm text-muted-foreground">Result will appear here.</span>}
               </div>
             ) : (
-              <CodeEditor bare value={hasRun ? output : ''} readOnly placeholder="Result will appear here." wrap={wrap} ariaLabel="Output" language={config.language ?? 'text'} fitContent />
+              <CodeEditor bare value={hasRun && !error ? output : ''} readOnly placeholder="Result will appear here." wrap={wrap} ariaLabel="Output" language={config.language ?? 'text'} fitContent />
             )}
           </div>
         </div>
       </div>
-      <ToolStatus state={hasRun ? 'valid' : 'idle'} validLabel={`${config.actionLabel} completed`} />
+      <ToolStatus state={!hasRun ? 'idle' : error ? 'invalid' : 'valid'} message={error ?? undefined} validLabel={`${config.actionLabel} completed`} />
       {dialog}
     </div>
   )

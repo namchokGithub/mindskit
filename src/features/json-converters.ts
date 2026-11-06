@@ -12,7 +12,7 @@ export function jsonToCsv(input: string): string {
 
   const rows = value as Record<string, unknown>[]
   const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))]
-  return [headers, ...rows.map((row) => headers.map((header) => csvValue(row[header])))].map((row) => row.join(',')).join('\n')
+  return [headers.map(csvValue), ...rows.map((row) => headers.map((header) => csvValue(row[header])))].map((row) => row.join(',')).join('\n')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

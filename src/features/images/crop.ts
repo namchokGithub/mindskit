@@ -1,3 +1,5 @@
+import { MAX_IMAGE_DIMENSION } from './resize.ts'
+
 export interface CropRect {
   x: number
   y: number
@@ -74,7 +76,8 @@ export function moveCropRect(startRect: CropRect, deltaX: number, deltaY: number
 
 /**
  * Resizes a rect by dragging one corner, anchored on the opposite corner.
- * If `ratio` is set, height always follows width. Bounded to stay inside the image.
+ * If `ratio` is set, the axis that moved more (relative to the ratio) drives the size, so a corner can be dragged
+ * horizontally or vertically. Bounded to stay inside the image.
  */
 export function resizeCropRect(
   corner: CropCorner,
@@ -96,7 +99,9 @@ export function resizeCropRect(
   let width = Math.min(availableWidth, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'sw' ? anchorX - freeX : freeX - anchorX))
   let height = Math.min(availableHeight, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'ne' ? anchorY - freeY : freeY - anchorY))
   if (ratio) {
-    width = Math.min(width, availableHeight * ratio)
+    const widthFromY = height * ratio
+    width = Math.abs(widthFromY - startRect.width) > Math.abs(width - startRect.width) ? widthFromY : width
+    width = Math.min(width, availableWidth, availableHeight * ratio)
     height = width / ratio
   }
 
@@ -190,6 +195,66 @@ export function maxInscribedRect(size: ImageBounds, degrees: number): CropRect {
   }
 }
 
+/**
+ * Maps a crop through a 90° turn of the bounding box (`direction` 1 = clockwise, −1 = counterclockwise) so it keeps
+ * covering the same image content. `bounds` is the bounding box before the turn; the result lives in the turned box,
+ * whose width and height are swapped. The crop's width and height swap with it.
+ */
+export function rotateCropRectQuarter(rect: CropRect, bounds: ImageBounds, direction: 1 | -1): CropRect {
+  const turned = direction === 1
+    ? { x: bounds.height - rect.y - rect.height, y: rect.x, width: rect.height, height: rect.width }
+    : { x: rect.y, y: bounds.width - rect.x - rect.width, width: rect.height, height: rect.width }
+  return clampCropRect(turned, { width: bounds.height, height: bounds.width })
+}
+
+/**
+ * Moves a crop into new bounds after a free-rotation change: it keeps its size and its center's offset from the
+ * bounding-box center, then is clamped into the new bounds (a locked ratio is kept, shrinking around the center).
+ */
+export function recenterCrop(rect: CropRect, from: ImageBounds, to: ImageBounds, ratio: number | null): CropRect {
+  const centerX = rect.x + rect.width / 2 - from.width / 2 + to.width / 2
+  const centerY = rect.y + rect.height / 2 - from.height / 2 + to.height / 2
+  const moved = { x: centerX - rect.width / 2, y: centerY - rect.height / 2, width: rect.width, height: rect.height }
+  return ratio ? applyAspectRatio(moved, ratio, to) : clampCropRect(moved, to)
+}
+
+/**
+ * Carries a crop from one transform to another. Quarter turns rotate the crop with the image so it covers the same
+ * content; with a locked ratio, an odd number of turns leaves the crop in the swapped orientation, so it is re-fitted to
+ * the ratio around the same center keeping its area (`fitAspectRatioKeepingArea`). A free-angle change then keeps the
+ * crop's size and its center relative to the bounding-box center (`recenterCrop`). Flips are not considered here: a
+ * screen flip keeps the bounding box, so the page leaves the crop in place.
+ */
+export function mapCropToTransform(rect: CropRect, size: ImageBounds, from: ImageTransform, to: ImageTransform, ratio: number | null): CropRect {
+  const angle = clampFreeAngle(from.angle)
+  let quarterTurns = normalizeQuarterTurns(from.quarterTurns)
+  const steps = normalizeQuarterTurns(to.quarterTurns - quarterTurns)
+  const direction = steps === 3 ? -1 : 1
+  let next = rect
+  for (let index = 0; index < (steps === 3 ? 1 : steps); index++) {
+    next = rotateCropRectQuarter(next, rotatedBoundingSize(size, quarterTurns * 90 + angle), direction)
+    quarterTurns = normalizeQuarterTurns(quarterTurns + direction)
+  }
+  const turnedBounds = rotatedBoundingSize(size, quarterTurns * 90 + angle)
+  if (ratio && steps % 2 === 1) next = fitAspectRatioKeepingArea(next, ratio, turnedBounds)
+  return recenterCrop(next, turnedBounds, rotatedBoundingSize(size, totalRotation(to)), ratio)
+}
+
+/**
+ * Flips the rendered image in screen axes, whatever the rotation. Rendering (CSS preview and `renderCropToBlob`) flips
+ * in image axes and then rotates, i.e. screen = R(θ)·F. Mirroring the screen gives Fs·R(θ)·F = R(−θ)·Fs·F, so a screen
+ * flip toggles the same image-axis flip and negates the rotation (quarter turns and free angle). The bounding box keeps
+ * its size, and the rotation controls keep turning clockwise on screen.
+ */
+export function flipInScreenAxes(transform: ImageTransform, axis: 'horizontal' | 'vertical'): ImageTransform {
+  return {
+    quarterTurns: normalizeQuarterTurns(-transform.quarterTurns),
+    angle: transform.angle === 0 ? 0 : -transform.angle,
+    flipH: axis === 'horizontal' ? !transform.flipH : transform.flipH,
+    flipV: axis === 'vertical' ? !transform.flipV : transform.flipV,
+  }
+}
+
 /** Sets the crop box to an exact width × height (pixels), keeping its center, then clamps it to the bounds. */
 export function resizeCropToDimensions(
   rect: CropRect,
@@ -232,11 +297,39 @@ export const OUTPUT_SIZE_PRESETS: OutputSizePreset[] = [
   { id: '4x6', group: 'Print (300 dpi)', label: '4 × 6 in', width: 1200, height: 1800 },
 ]
 
-export const MAX_OUTPUT_DIMENSION = 10_000
+export const MAX_OUTPUT_DIMENSION = MAX_IMAGE_DIMENSION
+/** Largest canvas area Safari can export (4096 × 4096). */
+export const MAX_OUTPUT_PIXELS = 16_777_216
+/** Mirrors Image Resize's input limit (its constant is not exported). */
+export const MAX_CROP_FILE_SIZE = 20 * 1024 * 1024
+
+/** Rejects non-images and files over 20 MiB before they are decoded. */
+export function validateCropFile(file: { type: string; size: number }): string | null {
+  if (!file.type.startsWith('image/')) return 'Please choose an image file.'
+  if (file.size > MAX_CROP_FILE_SIZE) return 'Images must be 20 MiB or smaller.'
+  return null
+}
+
+/** Rejects decoded images over 10,000 px per side, like Image Resize. */
+export function validateCropSourceSize(size: ImageBounds): string | null {
+  if (size.width > MAX_IMAGE_DIMENSION || size.height > MAX_IMAGE_DIMENSION) return `Images must be ${MAX_IMAGE_DIMENSION.toLocaleString()} px or smaller on each side.`
+  return null
+}
 
 export function validateOutputSize(size: ImageBounds): string | null {
   if (!Number.isInteger(size.width) || !Number.isInteger(size.height) || size.width < 1 || size.height < 1) return 'Enter a whole-number output size.'
   if (size.width > MAX_OUTPUT_DIMENSION || size.height > MAX_OUTPUT_DIMENSION) return `Output size must be ${MAX_OUTPUT_DIMENSION.toLocaleString()} px or smaller per side.`
+  if (size.width * size.height > MAX_OUTPUT_PIXELS) return `Output size must be ${MAX_OUTPUT_PIXELS.toLocaleString()} pixels or fewer in total (width × height).`
+  return null
+}
+
+/** Validates the "Original (crop size)" output, where the crop itself sets the exported size. */
+export function validateCropOutput(size: ImageBounds): string | null {
+  const width = Math.max(1, Math.round(size.width))
+  const height = Math.max(1, Math.round(size.height))
+  const advice = 'Make the crop smaller or choose a smaller output size.'
+  if (width > MAX_OUTPUT_DIMENSION || height > MAX_OUTPUT_DIMENSION) return `The crop is ${width} × ${height} px; exports are limited to ${MAX_OUTPUT_DIMENSION.toLocaleString()} px per side. ${advice}`
+  if (width * height > MAX_OUTPUT_PIXELS) return `The crop is ${width} × ${height} px; exports are limited to ${MAX_OUTPUT_PIXELS.toLocaleString()} pixels in total. ${advice}`
   return null
 }
 

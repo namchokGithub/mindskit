@@ -7,7 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { categories, getToolsByCategory, tools } from '@/config/tools'
 import { cn } from '@/lib/utils'
 
-const DEFAULT_OPEN_CATEGORIES = ['formatters']
+// Open JSON first (the old 'formatters' default meant the JSON tools); fall back to the first category if it is ever renamed.
+const DEFAULT_OPEN_CATEGORIES = [categories.find((category) => category.id === 'json')?.id ?? categories[0].id]
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation()

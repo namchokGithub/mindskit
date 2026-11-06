@@ -1,0 +1,588 @@
+import { Flag, ImagePlus, Pause, Play, RotateCcw, ShieldCheck, Shuffle, TriangleAlert, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
+
+import { ToolPageHeader } from '@/components/tool/tool-page-header'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { NOISE_TIMER_MINUTES, fillNoise, type NoiseColor } from '@/features/screen-simulator/noise'
+import {
+  COLOR_PRESETS,
+  MAX_CALL_MEMBERS,
+  MATRIX_CHARSETS,
+  MAX_KELVIN,
+  MIN_KELVIN,
+  PRANK_CRACK_IMAGES,
+  RESOLUTIONS,
+  SAMPLE_HACKER_CODE,
+  STOPPED_TIMER,
+  countdownRemaining,
+  durationFromParts,
+  grayHex,
+  hexToRgbText,
+  kelvinToHex,
+  matrixCharacters,
+  parseMemberNames,
+  parseScreenColor,
+  pauseTimer,
+  randomMemberNames,
+  startTimer,
+  timerElapsed,
+  type MatrixLanguage,
+  type ProgressMode,
+  type TimerState,
+} from '@/features/screen-simulator/screen'
+import { cn } from '@/lib/utils'
+
+import { BsodScreen, ColorScreen, HackerTypingScreen, type BsodVariant } from './screens/basic-screens'
+import { UpdateScreen, VideoCallScreen, type CallStyle, type SelfAvatar, type UpdateVariant } from './screens/call-and-update-screens'
+import { BrokenScreen, CountdownScreen, HackerSimulatorScreen, QrScreen, StopwatchScreen } from './screens/extra-screens'
+import { NoiseScreen } from './screens/noise-screen'
+import { DvdScreen, FlipClockScreen, MatrixScreen, NoSignalScreen, QuotesScreen } from './screens/screensaver-screens'
+import { type FlipAppearance } from './screens/flip-display'
+import { ScreenStage } from './stage'
+
+const TABS = [
+  { id: 'colors', label: 'Colors', modes: [{ id: 'solid', label: 'Solid color' }, { id: 'gray', label: 'Gray' }, { id: 'lighting', label: 'Lighting' }] },
+  { id: 'pranks', label: 'Screen Pranks', modes: [{ id: 'hacker', label: 'Hacker Typing' }, { id: 'hacker-sim', label: 'Hacker Simulator' }, { id: 'broken', label: 'Broken Screen' }, { id: 'bsod', label: 'Blue Screen' }, { id: 'call', label: 'Fake Video Call' }, { id: 'update', label: 'Fake Update' }] },
+  { id: 'screensaver', label: 'Screensaver', modes: [{ id: 'dvd', label: 'DVD' }, { id: 'clock', label: 'Flip Clock' }, { id: 'quotes', label: 'Quotes' }, { id: 'no-signal', label: 'No Signal' }, { id: 'matrix', label: 'Matrix' }, { id: 'countdown', label: 'Countdown' }, { id: 'stopwatch', label: 'Stopwatch' }, { id: 'qr', label: 'QR Code' }] },
+  { id: 'noise', label: 'White Noise', modes: [] },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
+
+const BSOD_VARIANTS: { id: BsodVariant; label: string }[] = [{ id: 'win10', label: 'Windows 10' }, { id: 'win11', label: 'Windows 11' }, { id: 'xp', label: 'Windows XP' }]
+const CALL_STYLES: { id: CallStyle; label: string }[] = [{ id: 'teams', label: 'Microsoft Teams' }, { id: 'meet', label: 'Google Meet' }, { id: 'zoom', label: 'Zoom' }, { id: 'discord', label: 'Discord' }]
+const UPDATE_VARIANTS: { id: UpdateVariant; label: string }[] = [
+  { id: 'win10', label: 'Windows 10' },
+  { id: 'win11', label: 'Windows 11' },
+  { id: 'xp', label: 'Windows XP' },
+  { id: 'xp-boot', label: 'Windows XP boot' },
+  { id: 'macos', label: 'Mac OS X' },
+  { id: 'ubuntu', label: 'Ubuntu 22' },
+  { id: 'chromeos', label: 'Chrome OS' },
+  { id: 'android', label: 'Android' },
+]
+
+// Every 250 K sampled from the same conversion the screen uses, so the slider shows the exact displayed colors.
+const KELVIN_GRADIENT = `linear-gradient(90deg, ${Array.from({ length: (MAX_KELVIN - MIN_KELVIN) / 250 + 1 }, (_, index) => kelvinToHex(MIN_KELVIN + index * 250)).join(', ')})`
+
+const fieldClass = 'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 aria-invalid:border-destructive'
+
+function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: readonly { id: T; label: string }[]; onChange: (value: T) => void }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1">
+      {options.map((option) => (
+        <Button key={option.id} type="button" size="sm" variant={value === option.id ? 'secondary' : 'ghost'} role="radio" aria-checked={value === option.id} onClick={() => onChange(option.id)}>
+          {option.label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">{label}{children}</label>
+}
+
+function ProgressControls({ mode, setMode, duration, setDuration, percent, setPercent }: { mode: ProgressMode; setMode: (mode: ProgressMode) => void; duration: number; setDuration: (value: number) => void; percent: number; setPercent: (value: number) => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Segmented label="Progress mode" value={mode} options={[{ id: 'auto', label: 'Run over time' }, { id: 'fixed', label: 'Fixed %' }] as const} onChange={setMode} />
+      {mode === 'auto' ? (
+        <Field label={`Update time: ${duration >= 60 ? `${Math.floor(duration / 60)} min ${duration % 60 ? `${duration % 60} s` : ''}` : `${duration} s`} to reach 100%`}>
+          <input type="range" min={10} max={3600} step={10} value={duration} onChange={(event) => setDuration(Number(event.target.value))} className="accent-primary" />
+        </Field>
+      ) : (
+        <Field label={`Complete: ${percent}%`}>
+          <input type="range" min={0} max={100} value={percent} onChange={(event) => setPercent(Number(event.target.value))} className="accent-primary" />
+        </Field>
+      )}
+    </div>
+  )
+}
+
+/** Plays generated noise through Web Audio while `playing` is true. */
+function useNoisePlayer(color: NoiseColor, volume: number, playing: boolean) {
+  const contextRef = useRef<AudioContext | null>(null)
+  const gainRef = useRef<GainNode | null>(null)
+
+  useEffect(() => {
+    if (!playing) return
+    const context = contextRef.current ?? new AudioContext()
+    contextRef.current = context
+    void context.resume()
+    const buffer = context.createBuffer(1, context.sampleRate * 4, context.sampleRate)
+    fillNoise(buffer.getChannelData(0), color)
+    const source = context.createBufferSource()
+    source.buffer = buffer
+    source.loop = true
+    const gain = context.createGain()
+    gain.gain.value = volume
+    gainRef.current = gain
+    source.connect(gain).connect(context.destination)
+    source.start()
+    return () => {
+      source.stop()
+      source.disconnect()
+      gain.disconnect()
+      gainRef.current = null
+    }
+    // Volume changes are applied below without restarting the sound.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [color, playing])
+
+  useEffect(() => {
+    if (gainRef.current) gainRef.current.gain.value = volume
+  }, [volume])
+
+  useEffect(() => () => void contextRef.current?.close(), [])
+}
+
+export function ScreenSimulatorPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = (TABS.find((item) => item.id === searchParams.get('tab'))?.id ?? 'colors') as TabId
+  const tabConfig = TABS.find((item) => item.id === tab)!
+  const modes: readonly { id: string; label: string }[] = tabConfig.modes
+  const mode = modes.find((item) => item.id === searchParams.get('mode'))?.id ?? modes[0]?.id ?? ''
+
+  const setTab = (next: TabId) => setSearchParams({ tab: next }, { replace: false })
+  const setMode = (next: string) => setSearchParams({ tab, mode: next })
+
+  const [resolutionId, setResolutionId] = useState('1080p')
+  const resolution = RESOLUTIONS.find((item) => item.id === resolutionId) ?? RESOLUTIONS[2]
+
+  // Colors
+  const [colorHex, setColorHex] = useState('#FFFFFF')
+  const [colorText, setColorText] = useState('#FFFFFF')
+  const [rgbText, setRgbText] = useState('255, 255, 255')
+  const [kelvin, setKelvin] = useState(6500)
+  const colorTextError = parseScreenColor(colorText) === null
+  const rgbTextError = parseScreenColor(rgbText) === null
+  const applyColor = (hex: string) => {
+    setColorHex(hex)
+    setColorText(hex)
+    setRgbText(hexToRgbText(hex))
+  }
+
+  // Pranks
+  const [hackerCode, setHackerCode] = useState('')
+  const [hackerSpeed, setHackerSpeed] = useState(3)
+  const [hackerLoop, setHackerLoop] = useState(true)
+  const [bsodVariant, setBsodVariant] = useState<BsodVariant>('win10')
+  const [progressMode, setProgressMode] = useState<ProgressMode>('auto')
+  const [duration, setDuration] = useState(120)
+  const [fixedPercent, setFixedPercent] = useState(42)
+  const [callStyle, setCallStyle] = useState<CallStyle>('teams')
+  const [selfName, setSelfName] = useState('Jane Doe')
+  const [membersText, setMembersText] = useState(() => randomMemberNames(5).join('\n'))
+  const members = parseMemberNames(membersText)
+  const [updateVariant, setUpdateVariant] = useState<UpdateVariant>('win10')
+  const [meetingName, setMeetingName] = useState('')
+  const [avatarMode, setAvatarMode] = useState<'auto' | 'color' | 'photo'>('auto')
+  const [avatarColor, setAvatarColor] = useState('#7B83EB')
+  const [avatarPhotoUrl, setAvatarPhotoUrl] = useState<string | null>(null)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const avatarPhotoRef = useRef<string | null>(null)
+  const selfAvatar: SelfAvatar = {
+    color: avatarMode === 'color' ? avatarColor : null,
+    photoUrl: avatarMode === 'photo' ? avatarPhotoUrl : null,
+  }
+
+  // The photo stays an in-memory object URL in this tab; it is never uploaded or stored.
+  const replaceAvatarPhoto = (url: string | null) => {
+    if (avatarPhotoRef.current) URL.revokeObjectURL(avatarPhotoRef.current)
+    avatarPhotoRef.current = url
+    setAvatarPhotoUrl(url)
+  }
+  useEffect(() => () => {
+    if (avatarPhotoRef.current) URL.revokeObjectURL(avatarPhotoRef.current)
+  }, [])
+  const handleAvatarFile = (file: File) => {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      setAvatarError('Choose a PNG, JPEG, WebP, or GIF image.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('Images must be 10 MiB or smaller.')
+      return
+    }
+    setAvatarError('')
+    replaceAvatarPhoto(URL.createObjectURL(file))
+    setAvatarMode('photo')
+  }
+
+  const [grayLevel, setGrayLevel] = useState(128)
+  const [hackerSimSpeed, setHackerSimSpeed] = useState(1)
+  const [crackId, setCrackId] = useState<string>(PRANK_CRACK_IMAGES[0].id)
+  const crack = PRANK_CRACK_IMAGES.find((item) => item.id === crackId) ?? PRANK_CRACK_IMAGES[0]
+
+  // Countdown and stopwatch use performance.now() timestamps.
+  const [countdownParts, setCountdownParts] = useState({ hours: '0', minutes: '5', seconds: '0' })
+  const countdownTotal = durationFromParts(Number(countdownParts.hours), Number(countdownParts.minutes), Number(countdownParts.seconds))
+  const [countdownState, setCountdownState] = useState<TimerState>(STOPPED_TIMER)
+  const [stopwatchOffset, setStopwatchOffset] = useState({ minutes: '0', seconds: '0' })
+  const stopwatchStart = durationFromParts(0, Number(stopwatchOffset.minutes), Number(stopwatchOffset.seconds))
+  const [stopwatchState, setStopwatchState] = useState<TimerState>({ ...STOPPED_TIMER })
+  const [laps, setLaps] = useState<number[]>([])
+  const [qrContent, setQrContent] = useState('https://mindskit.dev')
+  const [qrDescription, setQrDescription] = useState('Scan to open MindsKit')
+  const [qrDark, setQrDark] = useState(false)
+
+  useEffect(() => {
+    // Stop the countdown exactly when it reaches zero.
+    if (!countdownState.running) return
+    const remaining = countdownRemaining(countdownTotal, countdownState, performance.now())
+    const id = window.setTimeout(() => setCountdownState((current) => pauseTimer(current, current.startedAt + (countdownTotal - current.accumulatedMs))), remaining)
+    return () => window.clearTimeout(id)
+  }, [countdownState, countdownTotal])
+
+  const updateCountdownPart = (part: 'hours' | 'minutes' | 'seconds', value: string) => {
+    setCountdownParts((current) => ({ ...current, [part]: value }))
+    setCountdownState(STOPPED_TIMER)
+  }
+  const resetStopwatch = (offset = stopwatchStart) => {
+    setStopwatchState({ ...STOPPED_TIMER, accumulatedMs: offset })
+    setLaps([])
+  }
+
+  // Screensaver
+  const [hour12, setHour12] = useState(false)
+  const [flipAppearance, setFlipAppearance] = useState<FlipAppearance>('dark')
+  const [showSeconds, setShowSeconds] = useState(true)
+  const [quoteLanguage, setQuoteLanguage] = useState<'en' | 'th'>('en')
+  const [quoteInterval, setQuoteInterval] = useState(10)
+  const [matrixSize, setMatrixSize] = useState(20)
+  const [matrixSpeed, setMatrixSpeed] = useState(50)
+  const [matrixLanguages, setMatrixLanguages] = useState<MatrixLanguage[]>(['ja'])
+  const matrixChars = useMemo(() => matrixCharacters(matrixLanguages), [matrixLanguages])
+  const toggleMatrixLanguage = (language: MatrixLanguage, checked: boolean) =>
+    setMatrixLanguages((current) => {
+      const next = checked ? [...current, language] : current.filter((item) => item !== language)
+      // Keep at least one language so the rain never goes empty.
+      return next.length > 0 ? next : current
+    })
+
+  // White noise
+  const [noiseColor, setNoiseColor] = useState<NoiseColor>('white')
+  const [volume, setVolume] = useState(0.4)
+  const [playing, setPlaying] = useState(false)
+  const [timerMinutes, setTimerMinutes] = useState(0)
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
+  useNoisePlayer(noiseColor, volume, playing && tab === 'noise')
+
+  useEffect(() => {
+    if (!playing || timerMinutes === 0) {
+      setRemainingSeconds(null)
+      return
+    }
+    const end = Date.now() + timerMinutes * 60_000
+    const tick = () => {
+      const left = Math.max(0, Math.round((end - Date.now()) / 1000))
+      setRemainingSeconds(left)
+      if (left === 0) setPlaying(false)
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [playing, timerMinutes])
+
+  useEffect(() => {
+    if (tab !== 'noise') setPlaying(false)
+  }, [tab])
+
+  const isPrank = tab === 'pranks' && (mode === 'bsod' || mode === 'call' || mode === 'update')
+  const progressSupported = (mode === 'bsod' && bsodVariant !== 'xp') || mode === 'update'
+
+  let screen: ReactNode = null
+  let background = '#000000'
+  if (tab === 'colors') {
+    background = mode === 'lighting' ? kelvinToHex(kelvin) : mode === 'gray' ? grayHex(grayLevel) : colorHex
+    screen = <ColorScreen hex={background} />
+  } else if (tab === 'pranks') {
+    if (mode === 'hacker') screen = <HackerTypingScreen code={hackerCode} charsPerTick={hackerSpeed} loop={hackerLoop} />
+    else if (mode === 'hacker-sim') screen = <HackerSimulatorScreen speed={hackerSimSpeed} />
+    else if (mode === 'broken') screen = <BrokenScreen src={crack.src} />
+    else if (mode === 'bsod') screen = <BsodScreen variant={bsodVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
+    else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} selfAvatar={selfAvatar} meetingName={meetingName} />
+    else screen = <UpdateScreen variant={updateVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
+  } else if (tab === 'screensaver') {
+    if (mode === 'dvd') screen = <DvdScreen />
+    else if (mode === 'clock') screen = <FlipClockScreen hour12={hour12} showSeconds={showSeconds} appearance={flipAppearance} />
+    else if (mode === 'quotes') screen = <QuotesScreen language={quoteLanguage} intervalSeconds={quoteInterval} />
+    else if (mode === 'no-signal') screen = <NoSignalScreen />
+    else if (mode === 'matrix') screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} characters={matrixChars} />
+    else if (mode === 'countdown') screen = <CountdownScreen totalMs={countdownTotal} state={countdownState} appearance={flipAppearance} />
+    else if (mode === 'stopwatch') screen = <StopwatchScreen state={stopwatchState} laps={laps} appearance={flipAppearance} />
+    else screen = <QrScreen content={qrContent} description={qrDescription} dark={qrDark} />
+  } else {
+    screen = <NoiseScreen color={noiseColor} playing={playing} remainingSeconds={remainingSeconds} />
+  }
+
+  return (
+    <div className="flex min-h-0 flex-col gap-4">
+      <ToolPageHeader title="Screen Simulator" description="Full-screen colors, lighting, screen pranks, screensavers, and white noise — all generated in your browser." showRememberInput={false} />
+
+      <div role="tablist" aria-label="Screen Simulator sections" className="flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1 shadow-sm">
+        {TABS.map((item) => (
+          <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', tab === item.id ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {modes.length > 0 && <Segmented label={`${tabConfig.label} screens`} value={mode} options={modes} onChange={setMode} />}
+
+      {isPrank && (
+        <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3.5 py-2.5 text-sm text-warning">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          <span>Prank screen for fun only. It imitates the look of a real product but is not affiliated with or endorsed by its owner, does nothing to your device, and must not be used to deceive people for harm, fraud, or phishing.</span>
+        </div>
+      )}
+
+      <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <ScreenStage key={`${tab}-${mode}`} resolution={resolution} background={background}>{screen}</ScreenStage>
+
+        <aside className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <Field label="Preview resolution">
+            <Select value={resolutionId} onValueChange={setResolutionId}>
+              <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>{RESOLUTIONS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+
+          {tab === 'colors' && mode === 'solid' && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {COLOR_PRESETS.map((preset) => (
+                  <button key={preset.id} type="button" onClick={() => applyColor(preset.hex)} aria-label={preset.label} title={preset.label} className={cn('size-8 rounded-lg border border-border shadow-sm', colorHex === preset.hex && 'ring-2 ring-ring ring-offset-2 ring-offset-background')} style={{ background: preset.hex }} />
+                ))}
+                <input type="color" value={colorHex.toLowerCase()} onChange={(event) => applyColor(event.target.value.toUpperCase())} aria-label="Pick a color" className="h-8 w-10 cursor-pointer rounded-lg border border-input bg-transparent p-0.5" />
+              </div>
+              <Field label="HEX">
+                <input value={colorText} onChange={(event) => { setColorText(event.target.value); const hex = parseScreenColor(event.target.value); if (hex && /#|^[0-9a-f]{3,6}$/i.test(event.target.value.trim())) { setColorHex(hex); setRgbText(hexToRgbText(hex)) } }} aria-invalid={colorTextError} placeholder="#FFC0CB" className={cn(fieldClass, 'font-mono uppercase')} />
+              </Field>
+              <Field label="RGB">
+                <input value={rgbText} onChange={(event) => { setRgbText(event.target.value); const hex = parseScreenColor(event.target.value); if (hex && /,|rgb/i.test(event.target.value)) { setColorHex(hex); setColorText(hex) } }} aria-invalid={rgbTextError} placeholder="12, 23, 12" className={cn(fieldClass, 'font-mono')} />
+              </Field>
+              {(colorTextError || rgbTextError) && <p className="text-xs text-destructive">Use #RGB, #RRGGBB, or three numbers 0–255 such as 12, 23, 12.</p>}
+            </>
+          )}
+
+          {tab === 'colors' && mode === 'gray' && (
+            <Field label={`Gray level: ${grayLevel} · ${grayHex(grayLevel)}`}>
+              <input type="range" min={0} max={255} value={grayLevel} onChange={(event) => setGrayLevel(Number(event.target.value))} aria-label="Gray level from black to white" className="mk-gradient-range" style={{ background: 'linear-gradient(90deg, #000000, #FFFFFF)' }} />
+              <span className="flex justify-between text-[0.7rem]"><span>Black</span><span>White</span></span>
+            </Field>
+          )}
+
+          {tab === 'pranks' && mode === 'hacker-sim' && (
+            <>
+              <Field label={`Speed: ${hackerSimSpeed}×`}>
+                <input type="range" min={0.25} max={3} step={0.25} value={hackerSimSpeed} onChange={(event) => setHackerSimSpeed(Number(event.target.value))} className="accent-primary" />
+              </Field>
+              <p className="text-xs text-muted-foreground">Press any key while the screen is shown (outside these fields) to pop ACCESS GRANTED or DENIED.</p>
+            </>
+          )}
+
+          {tab === 'pranks' && mode === 'broken' && (
+            <div className="grid grid-cols-3 gap-2">
+              {PRANK_CRACK_IMAGES.map((item) => (
+                <button key={item.id} type="button" onClick={() => setCrackId(item.id)} aria-pressed={crackId === item.id} aria-label={item.label} className={cn('overflow-hidden rounded-lg border border-border', crackId === item.id && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}>
+                  <img src={item.src} alt="" className="aspect-video w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === 'screensaver' && mode === 'countdown' && (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {(['hours', 'minutes', 'seconds'] as const).map((part) => (
+                  <Field key={part} label={part[0].toUpperCase() + part.slice(1)}>
+                    <input type="number" min={0} max={part === 'hours' ? 99 : 59} value={countdownParts[part]} onChange={(event) => updateCountdownPart(part, event.target.value)} className={fieldClass} />
+                  </Field>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {countdownState.running
+                  ? <Button type="button" onClick={() => setCountdownState((current) => pauseTimer(current, performance.now()))}><Pause />Pause</Button>
+                  : <Button type="button" disabled={countdownTotal === 0 || countdownRemaining(countdownTotal, countdownState, performance.now()) === 0} onClick={() => setCountdownState((current) => startTimer(current, performance.now()))}><Play />Start</Button>}
+                <Button type="button" variant="outline" onClick={() => setCountdownState(STOPPED_TIMER)}><RotateCcw />Reset</Button>
+              </div>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'stopwatch' && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {(['minutes', 'seconds'] as const).map((part) => (
+                  <Field key={part} label={`Start at (${part})`}>
+                    <input type="number" min={0} max={59} value={stopwatchOffset[part]} onChange={(event) => { const next = { ...stopwatchOffset, [part]: event.target.value }; setStopwatchOffset(next); resetStopwatch(durationFromParts(0, Number(next.minutes), Number(next.seconds))) }} className={fieldClass} />
+                  </Field>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {stopwatchState.running
+                  ? <Button type="button" onClick={() => setStopwatchState((current) => pauseTimer(current, performance.now()))}><Pause />Pause</Button>
+                  : <Button type="button" onClick={() => setStopwatchState((current) => startTimer(current, performance.now()))}><Play />Start</Button>}
+                <Button type="button" variant="outline" disabled={!stopwatchState.running} onClick={() => setLaps((current) => [...current, timerElapsed(stopwatchState, performance.now())])}><Flag />Lap</Button>
+                <Button type="button" variant="outline" onClick={() => resetStopwatch()}><RotateCcw />Reset</Button>
+              </div>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'qr' && (
+            <>
+              <Field label="Text or URL">
+                <Textarea value={qrContent} onChange={(event) => setQrContent(event.target.value)} className="min-h-20 text-sm field-sizing-fixed" />
+              </Field>
+              <Field label="Description (shown under the QR code)">
+                <Textarea value={qrDescription} onChange={(event) => setQrDescription(event.target.value)} className="min-h-16 text-sm field-sizing-fixed" />
+              </Field>
+              <Segmented label="QR background" value={qrDark ? 'dark' : 'light'} options={[{ id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }] as const} onChange={(value) => setQrDark(value === 'dark')} />
+            </>
+          )}
+
+          {tab === 'colors' && mode === 'lighting' && (
+            <Field label={`Color temperature: ${kelvin} K`}>
+              <input type="range" min={MIN_KELVIN} max={MAX_KELVIN} step={50} value={kelvin} onChange={(event) => setKelvin(Number(event.target.value))} className="mk-gradient-range" style={{ background: KELVIN_GRADIENT }} aria-label="Color temperature in kelvin" />
+              <span className="flex justify-between text-[0.7rem]"><span>Warm</span><span className="font-mono">{kelvinToHex(kelvin)}</span><span>Cool</span></span>
+            </Field>
+          )}
+
+          {tab === 'pranks' && mode === 'hacker' && (
+            <>
+              <Field label={`Speed: ${hackerSpeed} characters per tick`}>
+                <input type="range" min={1} max={30} value={hackerSpeed} onChange={(event) => setHackerSpeed(Number(event.target.value))} className="accent-primary" />
+              </Field>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={hackerLoop} onCheckedChange={(value) => setHackerLoop(value === true)} />Loop when finished</label>
+              <Field label="Your code (optional, stays in this browser)">
+                <Textarea value={hackerCode} onChange={(event) => setHackerCode(event.target.value)} placeholder={SAMPLE_HACKER_CODE.split('\n').slice(0, 3).join('\n')} className="min-h-40 font-mono text-xs field-sizing-fixed" />
+              </Field>
+            </>
+          )}
+
+          {tab === 'pranks' && mode === 'bsod' && (
+            <>
+              <Segmented label="Blue screen style" value={bsodVariant} options={BSOD_VARIANTS} onChange={setBsodVariant} />
+              {progressSupported && <ProgressControls mode={progressMode} setMode={setProgressMode} duration={duration} setDuration={setDuration} percent={fixedPercent} setPercent={setFixedPercent} />}
+            </>
+          )}
+
+          {tab === 'pranks' && mode === 'call' && (
+            <>
+              <Segmented label="Call style" value={callStyle} options={CALL_STYLES} onChange={setCallStyle} />
+              {callStyle === 'meet' && (
+                <Field label="Meeting name">
+                  <input value={meetingName} onChange={(event) => setMeetingName(event.target.value)} placeholder="abc-defg-hij" maxLength={60} className={fieldClass} />
+                </Field>
+              )}
+              <Field label="Your name"><input value={selfName} onChange={(event) => setSelfName(event.target.value)} className={fieldClass} /></Field>
+              <div className="flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">Your profile</span>
+                <Segmented label="Your profile picture" value={avatarMode} options={[{ id: 'auto', label: 'Auto' }, { id: 'color', label: 'Color' }, { id: 'photo', label: 'Photo' }] as const} onChange={(value) => { setAvatarMode(value); if (value === 'photo' && !avatarPhotoUrl) avatarInputRef.current?.click() }} />
+                {avatarMode === 'color' && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input type="color" value={avatarColor.toLowerCase()} onChange={(event) => setAvatarColor(event.target.value.toUpperCase())} aria-label="Your profile color" className="h-8 w-10 cursor-pointer rounded-lg border border-input bg-transparent p-0.5" />
+                    <span className="font-mono">{avatarColor}</span>
+                  </label>
+                )}
+                {avatarMode === 'photo' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {avatarPhotoUrl && <img src={avatarPhotoUrl} alt="Your profile" className="size-10 rounded-full object-cover" />}
+                    <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}><ImagePlus />{avatarPhotoUrl ? 'Change photo' : 'Upload photo'}</Button>
+                    {avatarPhotoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => { replaceAvatarPhoto(null); setAvatarMode('auto') }}><X />Remove</Button>}
+                  </div>
+                )}
+                <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) handleAvatarFile(file); event.target.value = '' }} />
+                {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" />Your photo stays in this browser tab only. It is not uploaded or saved anywhere and is gone when you close or reload the page.</p>
+              </div>
+              <Field label={`Members (one per line, max ${MAX_CALL_MEMBERS}) · ${members.length}/${MAX_CALL_MEMBERS}`}>
+                <Textarea value={membersText} onChange={(event) => setMembersText(event.target.value)} className="min-h-32 text-sm field-sizing-fixed" />
+              </Field>
+              <Button type="button" variant="outline" size="sm" onClick={() => setMembersText(randomMemberNames(1 + Math.floor(Math.random() * MAX_CALL_MEMBERS)).join('\n'))}><Shuffle />Random members</Button>
+            </>
+          )}
+
+          {tab === 'pranks' && mode === 'update' && (
+            <>
+              <Field label="System">
+                <Select value={updateVariant} onValueChange={(value) => setUpdateVariant(value as UpdateVariant)}>
+                  <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>{UPDATE_VARIANTS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              {updateVariant !== 'xp-boot' && <ProgressControls mode={progressMode} setMode={setProgressMode} duration={duration} setDuration={setDuration} percent={fixedPercent} setPercent={setFixedPercent} />}
+            </>
+          )}
+
+          {tab === 'screensaver' && (mode === 'clock' || mode === 'countdown' || mode === 'stopwatch') && (
+            <Segmented label="Flip card theme" value={flipAppearance} options={[{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }] as const} onChange={setFlipAppearance} />
+          )}
+
+          {tab === 'screensaver' && mode === 'clock' && (
+            <>
+              <Segmented label="Clock format" value={hour12 ? '12h' : '24h'} options={[{ id: '24h', label: '24h' }, { id: '12h', label: '12h' }] as const} onChange={(value) => setHour12(value === '12h')} />
+              <label className="flex items-center gap-2 text-xs text-muted-foreground"><Checkbox checked={showSeconds} onCheckedChange={(value) => setShowSeconds(value === true)} />Show seconds</label>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'quotes' && (
+            <>
+              <Segmented label="Quote language" value={quoteLanguage} options={[{ id: 'en', label: 'English' }, { id: 'th', label: 'ไทย' }] as const} onChange={setQuoteLanguage} />
+              <Field label={`Change every ${quoteInterval} s`}>
+                <input type="range" min={5} max={60} step={5} value={quoteInterval} onChange={(event) => setQuoteInterval(Number(event.target.value))} className="accent-primary" />
+              </Field>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'matrix' && (
+            <>
+              <Field label={`Character size: ${matrixSize} px`}>
+                <input type="range" min={10} max={48} value={matrixSize} onChange={(event) => setMatrixSize(Number(event.target.value))} className="accent-primary" />
+              </Field>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1.5 text-xs text-muted-foreground">Characters (mix any)</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(MATRIX_CHARSETS) as MatrixLanguage[]).map((language) => (
+                    <label key={language} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={matrixLanguages.includes(language)} onCheckedChange={(value) => toggleMatrixLanguage(language, value === true)} />
+                      {MATRIX_CHARSETS[language].label}
+                    </label>
+                  ))}
+                </div>
+                <span className="text-[0.7rem] text-muted-foreground">Digits 0–9 are always included.</span>
+              </fieldset>
+              <Field label={`Speed: ${matrixSpeed} ms per frame`}>
+                <input type="range" min={20} max={200} step={5} value={matrixSpeed} onChange={(event) => setMatrixSpeed(Number(event.target.value))} className="accent-primary" />
+              </Field>
+            </>
+          )}
+
+          {tab === 'screensaver' && (mode === 'dvd' || mode === 'no-signal') && <p className="text-xs text-muted-foreground">No settings. Use Full screen to start the screensaver.</p>}
+
+          {tab === 'noise' && (
+            <>
+              <Segmented label="Noise color" value={noiseColor} options={[{ id: 'white', label: 'White' }, { id: 'pink', label: 'Pink' }, { id: 'brown', label: 'Brown' }] as const} onChange={setNoiseColor} />
+              <Field label={`Volume: ${Math.round(volume * 100)}%`}>
+                <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="accent-primary" />
+              </Field>
+              <Field label="Stop after">
+                <Select value={String(timerMinutes)} onValueChange={(value) => setTimerMinutes(Number(value))}>
+                  <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>{NOISE_TIMER_MINUTES.map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes === 0 ? 'Never' : `${minutes} minutes`}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Button type="button" onClick={() => setPlaying((value) => !value)}>{playing ? <Pause /> : <Play />}{playing ? 'Pause' : 'Play'}</Button>
+            </>
+          )}
+        </aside>
+      </div>
+    </div>
+  )
+}

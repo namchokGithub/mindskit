@@ -8,6 +8,7 @@ import {
   resolveExportedMimeType,
   resolveResizeMimeType,
   validateImageForResize,
+  resizeSteps,
   validateResizeDimensions,
 } from '../src/features/images/resize.ts'
 import * as resize from '../src/features/images/resize.ts'
@@ -88,4 +89,18 @@ test('names exports after the type the browser actually encoded', () => {
   assert.equal(exportResizeFileName('logo.png', { width: 64, height: 64 }, resolveExportedMimeType('image/webp', 'image/png')), 'logo-64x64.png')
   assert.equal(encoderFallbackMessage('image/webp', 'image/webp'), null)
   assert.match(encoderFallbackMessage('image/webp', 'image/png') ?? '', /cannot export WebP, so the files were saved as PNG/)
+})
+
+test('downscales large reductions in halving steps per axis', () => {
+  assert.deepEqual(resizeSteps({ width: 1_920, height: 1_080 }, { width: 640, height: 360 }), [
+    { width: 960, height: 540 },
+    { width: 640, height: 360 },
+  ])
+  assert.deepEqual(resizeSteps({ width: 4_000, height: 400 }, { width: 500, height: 300 }), [
+    { width: 2_000, height: 400 },
+    { width: 1_000, height: 400 },
+    { width: 500, height: 300 },
+  ])
+  assert.deepEqual(resizeSteps({ width: 800, height: 600 }, { width: 500, height: 400 }), [{ width: 500, height: 400 }])
+  assert.deepEqual(resizeSteps({ width: 100, height: 100 }, { width: 400, height: 400 }), [{ width: 400, height: 400 }])
 })

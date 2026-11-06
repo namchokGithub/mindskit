@@ -1,6 +1,9 @@
 export function convertNumberBase(input: string, sourceBase: number, targetBase: number): string {
-  const value = input.trim().replace(/^[-+]?0[xX]/, '').replace(/^[-+]?0[oO]/, '').replace(/^[-+]?0[bB]/, '')
-  const sign = input.trim().startsWith('-') ? -1n : 1n
+  const trimmed = input.trim()
+  const sign = trimmed.startsWith('-') ? -1n : 1n
+  const unsigned = /^[-+]/.test(trimmed) ? trimmed.slice(1) : trimmed
+  const prefix = sourceBase === 16 ? /^0[xX]/ : sourceBase === 8 ? /^0[oO]/ : sourceBase === 2 ? /^0[bB]/ : null
+  const value = prefix ? unsigned.replace(prefix, '') : unsigned
   const digits = '0123456789abcdef'.slice(0, sourceBase)
   if (!value || [...value.toLowerCase()].some((character) => !digits.includes(character))) throw new Error(`Enter a valid base-${sourceBase} number.`)
   const number = [...value.toLowerCase()].reduce((total, character) => total * BigInt(sourceBase) + BigInt(digits.indexOf(character)), 0n) * sign

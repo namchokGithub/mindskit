@@ -26,7 +26,7 @@ export function convertBase64(input: string, operation: string): string {
       ? new TextDecoder().decode(base64ToBytes(input))
       : bytesToBase64(new TextEncoder().encode(input))
   } catch {
-    return 'Invalid Base64 input.'
+    throw new Error('Invalid Base64 input.')
   }
 }
 
@@ -34,23 +34,23 @@ export function convertUrl(input: string, operation: string): string {
   try {
     return operation === 'decode' ? decodeURIComponent(input) : encodeURIComponent(input)
   } catch {
-    return 'Invalid URL-encoded input.'
+    throw new Error('Invalid URL-encoded input.')
   }
 }
 
 export function convertHtml(input: string, operation: string): string {
-  const element = document.createElement('textarea')
   if (operation === 'decode') {
+    const element = document.createElement('textarea')
     element.innerHTML = input
     return element.value
   }
-  element.textContent = input
-  return element.innerHTML
+  return input.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;')
 }
 
 export function convertTimestamp(input: string, operation: string, _prefix?: string, _suffix?: string, timeZone = 'browser'): string {
-  const date = operation === 'to-date' ? new Date(Number(input) * 1000) : new Date(input)
-  if (Number.isNaN(date.getTime())) return 'Enter a valid timestamp or date.'
+  const trimmed = input.trim()
+  const date = !trimmed ? new Date(Number.NaN) : operation === 'to-date' ? new Date(/^\d{13}$/.test(trimmed) ? Number(trimmed) : Number(trimmed) * 1000) : new Date(trimmed)
+  if (Number.isNaN(date.getTime())) throw new Error('Enter a valid timestamp or date.')
   return operation === 'to-date' ? formatTimestampForTimeZone(date, timeZone === 'browser' ? undefined : timeZone) : String(Math.floor(date.getTime() / 1000))
 }
 
@@ -67,7 +67,8 @@ function formatTimestampForTimeZone(date: Date, timeZone?: string): string {
     timeZoneName: 'longOffset',
   }).formatToParts(date)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const offset = values.timeZoneName === 'GMT' ? 'Z' : values.timeZoneName.replace('GMT', '')
+  // Engines differ for a zero offset ('GMT' in browsers, 'GMT+00:00' in Node/ICU builds); both mean UTC.
+  const offset = /^GMT(?:[+-]00:?00)?$/.test(values.timeZoneName) ? 'Z' : values.timeZoneName.replace('GMT', '')
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}.${String(date.getMilliseconds()).padStart(3, '0')}${offset}`
 }
 

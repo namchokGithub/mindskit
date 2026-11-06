@@ -1,5 +1,5 @@
 import { Download, Eraser, ImagePlus, Plus, Shrink, Trash2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
@@ -59,7 +59,9 @@ function download(url: string, filename: string) {
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  document.body.appendChild(link)
   link.click()
+  link.remove()
 }
 
 export function ImageResizePage() {
@@ -79,6 +81,18 @@ export function ImageResizePage() {
 
   const imageRef = useRef<HTMLImageElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const objectUrlsRef = useRef<{ imageUrl: string; results: string[] }>({ imageUrl: '', results: [] })
+
+  useEffect(() => {
+    objectUrlsRef.current = { imageUrl, results: results.map((result) => result.url) }
+  }, [imageUrl, results])
+
+  // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
+  useEffect(() => () => {
+    const { imageUrl: latestImageUrl, results: latestResults } = objectUrlsRef.current
+    if (latestImageUrl) URL.revokeObjectURL(latestImageUrl)
+    latestResults.forEach((url) => URL.revokeObjectURL(url))
+  }, [])
 
   const clearResults = () => {
     results.forEach((result) => URL.revokeObjectURL(result.url))
@@ -143,6 +157,14 @@ export function ImageResizePage() {
       setJobs((current) => current.map((job) => job.mode === 'pixels'
         ? { ...job, ...lockPixelResizeInputs(originalSize, job.width, job.height), changedDimension: 'width' as const }
         : job))
+    } else if (!checked && originalSize) {
+      // While locked, the height field only shows a derived value; keep it so unlocking does not reveal a stale height.
+      setJobs((current) => current.map((job) => {
+        if (job.mode !== 'pixels') return job
+        const size = resolveJobSize(job)
+        // Without a valid size the old height is meaningless, so clear it rather than reveal a stale value.
+        return size ? { ...job, width: String(size.width), height: String(size.height) } : { ...job, height: '' }
+      }))
     }
     setKeepAspectRatio(checked)
     clearResults()
@@ -198,7 +220,7 @@ export function ImageResizePage() {
       for (let index = 0; index < planned.length; index += 1) {
         const item = planned[index]
         if (!item.size) continue
-        const blob = await resizeToBlob(imageRef.current, item.size, mimeType, exportQuality)
+        const blob = await resizeToBlob(imageRef.current, originalSize, item.size, mimeType, exportQuality)
         const exportedMimeType = resolveExportedMimeType(mimeType, blob.type)
         const fallback = encoderFallbackMessage(mimeType, exportedMimeType)
         if (fallback) setWarning(fallback)

@@ -345,6 +345,8 @@ export function validateDocument(document: ReadmeDocument): ValidationIssue[] {
     // Check required fields
     const sectionEntry = SECTION_LIBRARY[section.kind]
     for (const [fieldName, fieldDef] of Object.entries(sectionEntry.fields)) {
+      // A custom section's title is reported once, as `blank-custom-title`, below.
+      if (section.kind === 'custom' && fieldName === 'customTitle') continue
       if (fieldDef.required && (!section.fields[fieldName] || section.fields[fieldName].trim() === '')) {
         issues.push({
           code: 'section-required-fields-empty',
@@ -364,20 +366,21 @@ export function validateDocument(document: ReadmeDocument): ValidationIssue[] {
     }
 
     let heading = section.title
-    if (section.kind === 'custom' && section.fields.customTitle) {
-      heading = section.fields.customTitle
-    }
-
-    if (!heading || heading.trim() === '') {
-      if (section.kind === 'custom') {
+    if (section.kind === 'custom') {
+      // Blank and whitespace-only custom titles are the same mistake: report it once.
+      const customTitle = section.fields.customTitle ?? ''
+      if (customTitle.trim() === '') {
         issues.push({
           code: 'blank-custom-title',
           message: 'Custom section title cannot be blank',
           sectionId: section.id,
         })
+        continue
       }
-      continue
+      heading = customTitle
     }
+
+    if (!heading || heading.trim() === '') continue
 
     const count = visibleHeadings.get(heading) ?? 0
     if (count > 0) {

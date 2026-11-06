@@ -18,7 +18,12 @@ function getSystemPrefersDark(): boolean {
 }
 
 function getInitialPreference(): ThemePreference {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY)
+  let stored: string | null = null
+  try {
+    stored = localStorage.getItem(THEME_STORAGE_KEY)
+  } catch {
+    return 'system'
+  }
   if (stored === 'system' || themes.some((t) => t.id === stored)) {
     return stored as ThemePreference
   }
@@ -45,7 +50,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme, mode])
 
   useEffect(() => {
-    localStorage.setItem(THEME_STORAGE_KEY, preference)
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, preference)
+    } catch {
+      // Storage can be blocked; keep the preference in memory only.
+    }
   }, [preference])
 
   const setPreference = (next: ThemePreference) => setPreferenceState(next)

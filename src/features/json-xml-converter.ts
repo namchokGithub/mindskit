@@ -31,15 +31,22 @@ export function jsonToXml(input: string, rootName: string): string {
 
 function elementToValue(element: Element): unknown {
   const children = [...element.children]
-  if (!children.length) return element.textContent?.trim() ?? ''
+  if (!children.length) {
+    const text = element.textContent?.trim() ?? ''
+    if (!element.attributes.length) return text
+    const leaf: Record<string, unknown> = Object.create(null)
+    if (text) leaf['#text'] = text
+    leaf['@attributes'] = Object.fromEntries([...element.attributes].map((attribute) => [attribute.name, attribute.value]))
+    return leaf
+  }
 
   if (children.every((child) => child.tagName === 'item')) return children.map(elementToValue)
 
-  const value: Record<string, unknown> = {}
+  const value: Record<string, unknown> = Object.create(null)
   for (const child of children) {
     const childValue = elementToValue(child)
     const existing = value[child.tagName]
-    if (existing === undefined) value[child.tagName] = childValue
+    if (!Object.hasOwn(value, child.tagName)) value[child.tagName] = childValue
     else value[child.tagName] = Array.isArray(existing) ? [...existing, childValue] : [existing, childValue]
   }
   if (element.attributes.length) value['@attributes'] = Object.fromEntries([...element.attributes].map((attribute) => [attribute.name, attribute.value]))

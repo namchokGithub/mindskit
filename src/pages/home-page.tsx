@@ -1,11 +1,24 @@
 import { ArrowRight, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { categories, getToolsByCategory } from '@/config/tools'
 
 export function HomePage() {
+  const { hash, key } = useLocation()
+
+  // Scroll to the category named in the hash on mount and on every in-app hash navigation
+  // (the location key changes even when the same category link is clicked again).
+  useEffect(() => {
+    if (!hash) return
+    const target = document.getElementById(decodeURIComponent(hash.slice(1)))
+    if (!target) return
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' })
+  }, [hash, key])
+
   return (
     <div className="space-y-10">
       <section className="space-y-3">
@@ -13,12 +26,12 @@ export function HomePage() {
         <p className="text-base text-muted-foreground">Simple tools for everyday development.</p>
         <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           <ShieldCheck className="size-4 shrink-0 text-primary" />
-          Your data stays in the browser. Nothing you paste here is sent to a server.
+          Your data is processed in your browser. Only README Builder badge previews load images from img.shields.io.
         </div>
       </section>
 
       {categories.map((category) => (
-        <section key={category.id} id={category.id} className="scroll-mt-6 space-y-3">
+        <section key={category.id} id={category.id} className="scroll-mt-20 space-y-3">
           <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
             {category.name}
           </h2>

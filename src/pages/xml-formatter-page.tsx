@@ -52,7 +52,7 @@ export function XmlFormatterPage({
 
   const handleIndentChange = (next: IndentOption) => {
     setIndent(next);
-    if (mode === "format" && result?.ok) setResult(formatXml(input, next));
+    if (mode === "format" && result?.ok) confirm(input, () => setResult(formatXml(input, next)));
   };
 
   const handleSample = () => {

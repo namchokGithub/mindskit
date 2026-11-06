@@ -1,6 +1,5 @@
 import JsBarcode from "jsbarcode";
-import QRCode from "qrcode";
-import { Barcode, Download, Eraser, FileText, QrCode } from "lucide-react";
+import { Barcode, Download, Eraser, FileText } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { ToolPageHeader } from "@/components/tool/tool-page-header";
@@ -25,126 +24,9 @@ function download(href: string, filename: string) {
   const link = document.createElement("a");
   link.href = href;
   link.download = filename;
+  document.body.append(link);
   link.click();
-}
-
-export function QrCodePage() {
-  const { enabled } = useSaveLocally();
-  const [input, setInput] = usePersistedInput("qr-code", enabled);
-  const [imageUrl, setImageUrl] = useState("");
-  const [size, setSize] = useState("256");
-  const [level, setLevel] = useState<"L" | "M" | "Q" | "H">("M");
-  const [error, setError] = useState("");
-  const { confirm, dialog } = useLargeInputConfirmation(3 * 1024);
-
-  const generate = async (value = input) => {
-    if (!value.trim()) {
-      setImageUrl("");
-      setError("Enter text or a URL to generate a QR code.");
-      return;
-    }
-    try {
-      const image = await QRCode.toDataURL(value, {
-        width: Math.max(128, Math.min(1024, Number(size) || 256)),
-        margin: 2,
-        errorCorrectionLevel: level,
-      });
-      setImageUrl(image);
-      setError("");
-    } catch {
-      setImageUrl("");
-      setError("This content is too large to encode as a QR code.");
-    }
-  };
-
-  const useSample = () => {
-    const sample = "https://mindskit.dev";
-    setInput(sample);
-    void generate(sample);
-  };
-
-  return (
-    <>
-      <GeneratorLayout
-        title="QR Code"
-        description="Generate a QR code from text or a URL entirely in your browser."
-        icon={<QrCode />}
-        onGenerate={() => confirm(input, () => void generate())}
-        onSample={useSample}
-        onClear={() => {
-          setInput("");
-          setImageUrl("");
-          setError("");
-        }}
-        generateLabel="Generate QR code"
-        disabled={!input.trim()}>
-        <label className="space-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center justify-between gap-2">
-            <span>Text or URL</span>
-            <TextStats value={input} />
-          </span>
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="https://example.com or any text…"
-            className="block min-h-28 w-full resize-y rounded-lg border border-input bg-transparent p-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
-          />
-        </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-xs text-muted-foreground">
-            <span className="block">Size (128–1024 px)</span>
-            <input
-              type="number"
-              min="128"
-              max="1024"
-              value={size}
-              onChange={(event) => setSize(event.target.value)}
-              className={`${fieldClass} w-full`}
-            />
-          </label>
-          <label className="space-y-1 text-xs text-muted-foreground">
-            <span className="block">Error correction</span>
-            <Select
-              value={level}
-              onValueChange={(value) => setLevel(value as typeof level)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="L">Low (7%)</SelectItem>
-                <SelectItem value="M">Medium (15%)</SelectItem>
-                <SelectItem value="Q">Quartile (25%)</SelectItem>
-                <SelectItem value="H">High (30%)</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
-        </div>
-        <ToolStatus state={error ? "invalid" : imageUrl ? "valid" : "idle"} message={error} validLabel="QR code generated successfully" />
-        <div className="flex min-h-70 flex-1 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 p-6">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt="Generated QR code"
-          className="h-auto max-h-72 w-auto max-w-full rounded bg-white p-2 object-contain"
-            />
-          ) : (
-            <span className="text-center text-sm text-muted-foreground">
-              Your QR code will appear here.
-            </span>
-          )}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => download(imageUrl, "mindskit-qr-code.png")}
-          disabled={!imageUrl}>
-          <Download />
-          Download PNG
-        </Button>
-      </GeneratorLayout>
-      {dialog}
-    </>
-  );
+  link.remove();
 }
 
 export function BarcodePage() {
@@ -201,12 +83,11 @@ export function BarcodePage() {
   const downloadSvg = () => {
     if (!barcodeRef.current?.childNodes.length) return;
     const svg = new XMLSerializer().serializeToString(barcodeRef.current);
-    download(
-      URL.createObjectURL(
-        new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
-      ),
-      "mindskit-barcode.svg",
+    const url = URL.createObjectURL(
+      new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
     );
+    download(url, "mindskit-barcode.svg");
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (

@@ -65,12 +65,21 @@ function escapeMarkdownUrl(url: string): string {
 }
 
 /**
+ * Escape one Shields.io static-badge path segment: a literal `-` is written
+ * `--` and a literal `_` is written `__` (a single `-` separates segments and
+ * a single `_` means a space), then the result is URL-encoded.
+ */
+function encodeBadgeSegment(value: string): string {
+  return encodeURIComponent(value.replace(/-/g, '--').replace(/_/g, '__'))
+}
+
+/**
  * Build the Shields.io badge image URL for a badge
  */
 export function createBadgeUrl(badge: ReadmeBadge): string {
-  const label = encodeURIComponent(badge.label)
-  const message = encodeURIComponent(badge.message)
-  const color = encodeURIComponent(badge.color)
+  const label = encodeBadgeSegment(badge.label)
+  const message = encodeBadgeSegment(badge.message)
+  const color = encodeBadgeSegment(badge.color)
   return `https://img.shields.io/badge/${label}-${message}-${color}`
 }
 
@@ -101,14 +110,41 @@ function getSectionHeading(section: ReadmeSection): string {
   return section.title
 }
 
+/** Heading text of the generated table of contents block */
+const TABLE_OF_CONTENTS_HEADING = 'Table of Contents'
+
 /**
- * Lowercase ASCII slug: collapse non-alphanumeric runs to `-`, trim ends
+ * GitHub-style heading slug: lowercase, drop every character that is not a
+ * Unicode letter, combining mark (e.g. Thai vowel and tone marks), number,
+ * connector punctuation (`_`), hyphen, or space, then turn each space into
+ * `-`. Consecutive hyphens are deliberately not collapsed, matching GitHub
+ * (`C++ & API!` becomes `c--api`).
  */
 function slugify(value: string): string {
   return value
+    .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
+    .replace(/ /g, '-')
+}
+
+/**
+ * Create a slugger that numbers repeated slugs `-1`, `-2`, ... across every
+ * heading it is given, the way GitHub numbers heading anchors in a document.
+ */
+function createSlugger(): (value: string) => string {
+  const occurrences = new Map<string, number>()
+  return (value) => {
+    const baseSlug = slugify(value)
+    let slug = baseSlug
+    while (occurrences.has(slug)) {
+      const count = (occurrences.get(baseSlug) ?? 0) + 1
+      occurrences.set(baseSlug, count)
+      slug = `${baseSlug}-${count}`
+    }
+    occurrences.set(slug, 0)
+    return slug
+  }
 }
 
 /**
@@ -116,24 +152,54 @@ function slugify(value: string): string {
  * in document order. Sections that render no `##` block (see
  * `sectionRenderedParts`) are skipped too, so the TOC never links to a
  * heading that never appears and never consumes a slug-collision suffix
- * meant for a section that does render. Duplicate slugs among the
- * sections that do render get `-1`, `-2`, ... suffixes in order of
- * appearance.
+ * meant for a section that does render. Duplicate slugs get `-1`, `-2`, ...
+ * suffixes counted across all rendered headings, as on GitHub: the H1
+ * title, the `## Table of Contents` heading when it renders, and every
+ * rendered section heading including Overview, and every ATX heading
+ * (`#` … `######`) written inside a rendered section body (outside fenced
+ * code), in document order.
  */
 export function createTocEntries(document: ReadmeDocument): TocEntry[] {
-  const seenSlugCounts = new Map<string, number>()
+  const renderedSections = document.sections.filter(
+    (section) => section.visible && section.kind !== 'divider' && sectionRenderedParts(section).length > 0,
+  )
+  const listsAnySection = renderedSections.some((section) => section.kind !== 'overview')
+  const slug = createSlugger()
+  slug(document.title)
+  if (document.includeTableOfContents && listsAnySection) slug(TABLE_OF_CONTENTS_HEADING)
+
   const entries: TocEntry[] = []
-  for (const section of document.sections) {
-    if (!section.visible || section.kind === 'overview' || section.kind === 'divider') continue
-    if (sectionRenderedParts(section).length === 0) continue
+  for (const section of renderedSections) {
     const title = getSectionHeading(section)
-    const baseSlug = slugify(title)
-    const count = seenSlugCounts.get(baseSlug) ?? 0
-    seenSlugCounts.set(baseSlug, count + 1)
-    const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`
-    entries.push({ title, href: `#${slug}` })
+    const href = `#${slug(title)}`
+    if (section.kind !== 'overview') entries.push({ title, href })
+    for (const heading of bodyHeadings(section.body)) slug(heading)
   }
   return entries
+}
+
+/**
+ * ATX heading texts written in a section body, skipping fenced code blocks.
+ * Links and images keep only their text, as in the rendered heading GitHub
+ * slugs; other inline markup is removed by `slugify`.
+ */
+export function bodyHeadings(body: string): string[] {
+  const headings: string[] = []
+  let fence: string | null = null
+  for (const line of body.split(/\r?\n/)) {
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})/.exec(line)
+    if (fence) {
+      if (fenceMatch && fenceMatch[1][0] === fence[0] && fenceMatch[1].length >= fence.length && line.trim() === fenceMatch[1]) fence = null
+      continue
+    }
+    if (fenceMatch) {
+      fence = fenceMatch[1]
+      continue
+    }
+    const heading = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(line)
+    if (heading && heading[1].trim() !== '') headings.push(heading[1].replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1'))
+  }
+  return headings
 }
 
 /**
@@ -191,7 +257,7 @@ export function renderReadme(document: ReadmeDocument): string {
     const entries = createTocEntries(document)
     if (entries.length > 0) {
       const tocLines = entries.map((entry) => `- [${entry.title}](${entry.href})`).join('\n')
-      parts.push(`## Table of Contents\n\n${tocLines}`)
+      parts.push(`## ${TABLE_OF_CONTENTS_HEADING}\n\n${tocLines}`)
     }
   }
 
@@ -251,6 +317,19 @@ function matchLibraryKind(heading: string): [Exclude<SectionKind, 'custom'>, str
 }
 
 /**
+ * Recover a Live Demo section's `url` field from its imported body. The
+ * renderer writes that field as a `<url>` autolink on the first line of the
+ * section (see `renderFieldContent`); when the body starts with such a line,
+ * it moves back into `fields.url` and the rest stays as the body.
+ */
+function extractLiveDemoUrl(blockText: string): { fields: Record<string, string>; body: string } {
+  const [firstLine, ...rest] = blockText.split('\n')
+  const autolink = /^<([^<>\s]+)>$/.exec(firstLine.trim())
+  if (!autolink) return { fields: {}, body: blockText }
+  return { fields: { url: autolink[1] }, body: rest.join('\n').trim() }
+}
+
+/**
  * Conservatively import Markdown into a structured document.
  *
  * Only an initial H1 and top-level H2 blocks whose heading matches a known
@@ -298,13 +377,14 @@ export function importReadme(markdown: string): ImportResult {
     const matched = matchLibraryKind(block.heading)
     if (matched) {
       const [kind, defaultTitle] = matched
+      const { fields, body } = kind === 'live-demo' ? extractLiveDemoUrl(blockText) : { fields: {}, body: blockText }
       sections.push({
         id: crypto.randomUUID(),
         kind,
         title: defaultTitle,
         visible: true,
-        fields: {},
-        body: blockText,
+        fields,
+        body,
       })
     } else {
       sections.push({

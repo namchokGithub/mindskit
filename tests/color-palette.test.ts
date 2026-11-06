@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  copyablePaletteColors,
   extractColorsFromText,
   formatPaletteForCopy,
   isValidHexColor,
@@ -25,6 +26,41 @@ test('uses a label on the same line before the color', () => {
   ])
 })
 
+test('extracts HEX colors without # and normalizes them for copying', () => {
+  assert.deepEqual(extractColorsFromText('Primary Pearl Gold\nD5C49A\n\nAccent: abcdef'), [
+    { name: 'Primary Pearl Gold', hex: '#D5C49A' },
+    { name: 'Accent', hex: '#ABCDEF' },
+  ])
+})
+
+test('does not treat short words made of HEX letters as colors without #', () => {
+  assert.deepEqual(extractColorsFromText('Please add more contrast, the bad abc fad bed look\nAccent: abc'), [])
+})
+
+test('skips lowercase English words spelled with HEX letters, with or without #', () => {
+  assert.deepEqual(extractColorsFromText('Please #add more, facade decade'), [])
+  assert.deepEqual(extractColorsFromText('#bad #fed #ace effaced beaded #deface'), [])
+})
+
+test('keeps uppercase HEX-letter words as colors', () => {
+  assert.deepEqual(extractColorsFromText('#ADD'), [{ name: 'Color 1', hex: '#ADD' }])
+  assert.deepEqual(extractColorsFromText('Wall: FACADE'), [{ name: 'Wall', hex: '#FACADE' }])
+})
+
+test('a line of HEX-letter words still names the color below it', () => {
+  assert.deepEqual(extractColorsFromText('decade facade\n#D5C49A'), [{ name: 'decade facade', hex: '#D5C49A' }])
+})
+
+test('ignores list markers before a color and uses the label above instead', () => {
+  assert.deepEqual(extractColorsFromText('Primary Gold\n1. #D5C49A\n\nSoft Pearl\n2) #F5F0E4\n\nInk\n- #111\n\n* #222\n\n3. Accent #abc'), [
+    { name: 'Primary Gold', hex: '#D5C49A' },
+    { name: 'Soft Pearl', hex: '#F5F0E4' },
+    { name: 'Ink', hex: '#111' },
+    { name: 'Color 4', hex: '#222' },
+    { name: 'Accent', hex: '#ABC' },
+  ])
+})
+
 test('falls back to numbered names and keeps duplicates', () => {
   assert.deepEqual(extractColorsFromText('#111111 #111111\n\n#222'), [
     { name: 'Color 1', hex: '#111111' },
@@ -33,8 +69,8 @@ test('falls back to numbered names and keeps duplicates', () => {
   ])
 })
 
-test('ignores values that are not #RGB or #RRGGBB colors', () => {
-  assert.deepEqual(extractColorsFromText('#1234 #ABCDEF12 &#123; #ggg abc#fff'), [])
+test('ignores incomplete HEX values and codes embedded in other tokens', () => {
+  assert.deepEqual(extractColorsFromText('#1234 #ABCDEF12 &#123; #ggg abc#fff prefixD5C49A D5C49Asuffix'), [])
 })
 
 test('validates and normalizes HEX colors to uppercase', () => {
@@ -53,4 +89,17 @@ test('formats the palette for copying and picks readable label colors', () => {
   )
   assert.equal(readableTextColor('#F5F0E4'), '#000000')
   assert.equal(readableTextColor('#111'), '#FFFFFF')
+})
+
+test('copies valid colors with the same Color N fallback the cards show', () => {
+  assert.deepEqual(copyablePaletteColors([
+    { name: '  ', hex: '#abc' },
+    { name: 'Broken', hex: '#12' },
+    { name: '', hex: 'd5c49a' },
+    { name: 'Ink', hex: '#111111' },
+  ]), [
+    { name: 'Color 1', hex: '#ABC' },
+    { name: 'Color 3', hex: '#D5C49A' },
+    { name: 'Ink', hex: '#111111' },
+  ])
 })

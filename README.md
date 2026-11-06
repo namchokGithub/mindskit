@@ -51,14 +51,14 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Base64 Encode / Decode
 - URL Encode / Decode
 - HTML Encode / Decode
-- JWT Decoder, with formatted header/payload inspection and expiry status (decoding only; no signature verification)
+- JWT Decoder, with formatted header/payload inspection, expiry status, local HS256/HS384/HS512 signature verification, and an HMAC JWT encoder (verification only shows the token was signed with the supplied secret; it does not prove the issuer or claims are trustworthy)
 
 ### Generators
 
 - UUID v4, generated in batches of 1, 5, 10, or a custom amount up to 200
 - Random String, with configurable count, length, character sets, uniqueness, prefix/suffix, and separators
 - Strong Password Generator with cryptographically secure Random, Memorable, and PIN modes; strength/entropy feedback; character exclusions; and no local password storage
-- QR Code generator, with size/error-correction options and PNG download
+- QR Code generator with frames, body and eye shapes, Simple Icons or uploaded logos, error-correction levels, size/color controls, live preview, and PNG download
 - Barcode generator (Code 128, Code 39, EAN-13, EAN-8, and UPC-A), with SVG download
 
 ### Converters
@@ -70,7 +70,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - JSON ↔ XML conversion
 - Number Base Converter for binary, octal, decimal, and hexadecimal values
 - Letters ↔ Numbers for A1Z26, reverse alphabet, printable ASCII, and Roman numeral mappings
-- Color Converter for HEX, RGB, and HSL formats, plus a palette builder that extracts named HEX colors from pasted text and lets you add, edit, and copy up to 20 colors
+- Color Converter for HEX (with or without `#`), RGB, and HSL formats, plus a palette builder that extracts named 3- or 6-digit HEX colors with or without `#` from pasted text and lets you add, edit, and copy up to 20 colors
 - Date Formatter for common date-time formats and time zones
 - Roman Numeral Date Converter for Gregorian `YYYY-MM-DD` / `DD/MM/YYYY` dates and `DD/MM/YYYY` Roman numeral dates
 
@@ -78,6 +78,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 
 - Image Resize & Convert for PNG, JPEG, and WebP: export one uploaded image at multiple pixel or percentage sizes, or convert it between formats, processed sequentially in the browser, with an individual download for every result. New images reset resize settings; entering pixel mode starts at the original image size, and Keep aspect ratio derives height from width
 - Favicon Generator: create a `favicon.ico` containing 16, 32, and 48 px icons from a PNG, JPEG, or WebP image
+- Screen Simulator: full-screen solid colors (presets, picker, HEX/RGB), a black-to-white gray slider, and color-temperature lighting (1500–8500 K); prank screens (hacker typing, a movie-style hacker dashboard, broken screen, blue screens, fake Teams/Meet/Zoom/Discord calls, fake system updates) with a clear prank notice; screensavers (bouncing DVD, flip clock, quotes, no signal, Matrix rain, countdown, stopwatch with laps, and an on-screen QR code with a caption); and white/pink/brown noise. Previews from 480p to 8K, full screen with Screen Wake Lock
 - Image Crop with freeform and preset aspect ratios, exact crop size in pixels, output-size presets (social, screen/video, avatar/icon, print) or a custom output size, 90° rotation, horizontal/vertical flips, free straightening up to ±45°, a rule-of-thirds grid, a live preview, and a full-size preview dialog
 - Remove Background using an in-browser AI model
 - Screenshot Beautifier: compose a PNG/JPEG/WebP screenshot with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then export PNG/JPG at up to 2x resolution or copy the result to the clipboard

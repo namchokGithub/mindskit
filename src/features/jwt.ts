@@ -28,8 +28,11 @@ function decodeBase64Url(value: string): string {
   return new TextDecoder().decode(bytes)
 }
 
-function decodeBase64UrlBytes(value: string): Uint8Array<ArrayBuffer> {
-  if (!value) throw new Error('Enter a JWT signature verification secret.')
+function decodeBase64UrlBytes(
+  value: string,
+  messages: { empty: string; invalid: string },
+): Uint8Array<ArrayBuffer> {
+  if (!value) throw new Error(messages.empty)
 
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
@@ -37,7 +40,7 @@ function decodeBase64UrlBytes(value: string): Uint8Array<ArrayBuffer> {
     const binary = atob(base64 + padding)
     return Uint8Array.from(binary, (character) => character.charCodeAt(0))
   } catch {
-    throw new Error('The verification secret is not valid Base64URL data.')
+    throw new Error(messages.invalid)
   }
 }
 
@@ -51,6 +54,16 @@ const hashByAlgorithm: Record<JwtHmacAlgorithm, string> = {
   HS256: 'SHA-256',
   HS384: 'SHA-384',
   HS512: 'SHA-512',
+}
+
+const secretBase64UrlMessages = {
+  empty: 'Enter a JWT signature verification secret.',
+  invalid: 'The verification secret is not valid Base64URL data.',
+}
+
+const signatureBase64UrlMessages = {
+  empty: 'The JWT signature section is empty.',
+  invalid: 'The JWT signature is not valid Base64URL data.',
 }
 
 function formatJson(value: string, section: string): { formatted: string; data: unknown } {
@@ -106,7 +119,7 @@ export async function verifyJwtSignature(
   }
 
   const decoded = decodeJwt(compactToken)
-  const hash = decoded.algorithm && decoded.algorithm in hashByAlgorithm
+  const hash = decoded.algorithm && Object.hasOwn(hashByAlgorithm, decoded.algorithm)
     ? hashByAlgorithm[decoded.algorithm as JwtHmacAlgorithm]
     : undefined
   if (!hash) {
@@ -117,7 +130,7 @@ export async function verifyJwtSignature(
   if (!crypto?.subtle) throw new Error('Your browser does not support JWT signature verification.')
 
   const secretBytes: Uint8Array<ArrayBuffer> = secretIsBase64Url
-    ? decodeBase64UrlBytes(secret)
+    ? decodeBase64UrlBytes(secret, secretBase64UrlMessages)
     : new TextEncoder().encode(secret)
   const key = await crypto.subtle.importKey(
     'raw',
@@ -129,7 +142,7 @@ export async function verifyJwtSignature(
   const isValid = await crypto.subtle.verify(
     { name: 'HMAC' },
     key,
-    decodeBase64UrlBytes(parts[2]),
+    decodeBase64UrlBytes(parts[2], signatureBase64UrlMessages),
     new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
   )
 
@@ -153,7 +166,7 @@ export async function encodeJwt(
   const encodedPayload = encodeBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
   const signingInput = `${encodedHeader}.${encodedPayload}`
   const secretBytes: Uint8Array<ArrayBuffer> = secretIsBase64Url
-    ? decodeBase64UrlBytes(secret)
+    ? decodeBase64UrlBytes(secret, secretBase64UrlMessages)
     : new TextEncoder().encode(secret)
   const key = await crypto.subtle.importKey(
     'raw',

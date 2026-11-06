@@ -105,6 +105,21 @@ test('CREATE TABLE generator produces TypeScript and Go types for common scalar 
   assert.throws(() => createTableToTypes('SELECT 1', 'typescript'), /CREATE TABLE/)
 })
 
+test('CREATE TABLE type mapping matches whole SQL type names', () => {
+  const ddl = 'CREATE TABLE t (a INTERVAL, b INT8 NOT NULL, c TINYINT, d MEDIUMINT, e SMALLINT, f INT, g BIGINT, h INTEGER, i FLOAT8, j DOUBLE PRECISION);'
+  const typescript = createTableToTypes(ddl, 'typescript')
+  assert.match(typescript, /a\?: string \| null/)
+  assert.match(typescript, /b: string\n/)
+  for (const column of ['c', 'd', 'e', 'f', 'h', 'i', 'j']) assert.match(typescript, new RegExp(`\\b${column}\\?: number \\| null`))
+  assert.match(typescript, /g\?: string \| null/)
+  const go = createTableToTypes(ddl, 'go')
+  assert.match(go, /A string `json:"a,omitempty"`/)
+  assert.match(go, /B int64 `json:"b"`/)
+  for (const column of ['C', 'D', 'E', 'F', 'H']) assert.match(go, new RegExp(`${column} int \``))
+  assert.match(go, /G int64 `/)
+  assert.match(go, /I float64 `/)
+})
+
 test('syntax checker reports parser results without executing SQL', async () => {
   assert.deepEqual(await validateSqlSyntax('SELECT id FROM users WHERE active = true', 'postgresql'), { valid: true })
   const invalid = await validateSqlSyntax("SELECT 'unfinished", 'postgresql')
@@ -115,4 +130,24 @@ test('syntax checker reports parser results without executing SQL', async () => 
 test('minifier never joins tokens into a comment marker', () => {
   assert.equal(minifySql('SELECT 5 - -3 AS x'), 'SELECT 5- -3 AS x')
   assert.equal(minifySql('SELECT 10 / *'), 'SELECT 10/ *')
+})
+
+test('backslash escapes quotes only in MySQL strings and PostgreSQL E-strings', () => {
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'C:\\' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = 'C:\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = E'It\\'s ?' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = E'It\\'s ?' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = e'C:\\\\' AND id = $1", '[5]', 'postgresql'), "SELECT * FROM t WHERE p = e'C:\\\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'C:\\' AND id = ?", '[5]', 'transactsql'), "SELECT * FROM t WHERE p = 'C:\\' AND id = 5")
+  assert.equal(previewSqlParameters("SELECT * FROM t WHERE p = 'It\\'s ?' AND id = ?", '[5]', 'mysql'), "SELECT * FROM t WHERE p = 'It\\'s ?' AND id = 5")
+  assert.throws(() => previewSqlParameters("SELECT 'It\\'s' WHERE id = ?", '[5]', 'postgresql'), /Unclosed SQL quoted/)
+})
+
+test('minifier treats backslash as literal except inside E-strings', () => {
+  assert.equal(minifySql("SELECT  'C:\\',  'a  b'"), "SELECT 'C:\\','a  b'")
+  assert.equal(minifySql("SELECT  E'It\\'s  here',  'a  b'"), "SELECT E'It\\'s  here','a  b'")
+  assert.equal(minifySql("SELECT  type'x\\',  'a  b'"), "SELECT type'x\\','a  b'")
+})
+
+test('PostgreSQL parameter preview substitutes inside array subscripts', () => {
+  assert.equal(previewSqlParameters('SELECT arr[$1] FROM t', '[2]', 'postgresql'), 'SELECT arr[2] FROM t')
+  assert.equal(previewSqlParameters('SELECT [col ?] FROM t WHERE id = ?', '[3]', 'transactsql'), 'SELECT [col ?] FROM t WHERE id = 3')
 })

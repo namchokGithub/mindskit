@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { SectionKind } from '../src/features/readme-builder/model.ts'
 import { addSection, createDocument, duplicateSection, moveSection, pushHistory, updateSection, validateDocument } from '../src/features/readme-builder/model.ts'
-import { createBadgeUrl, createTocEntries, importReadme, renderReadme } from '../src/features/readme-builder/markdown.ts'
+import { bodyHeadings, createBadgeUrl, createTocEntries, importReadme, renderBadgeMarkup, renderReadme } from '../src/features/readme-builder/markdown.ts'
 import { createDraftsAdapter, createMemoryDraftStorage } from '../src/features/readme-builder/drafts.ts'
 import { mergeAppliedMarkdown } from '../src/features/readme-builder/apply-markdown.ts'
 
@@ -62,6 +62,20 @@ test('validation does not flag hidden sections with empty required body', () => 
   assert.equal(issues.length, 0)
 })
 
+test('validation reports blank and whitespace-only custom titles once, the same way', () => {
+  for (const customTitle of ['', '   ']) {
+    let document = addSection(createDocument('blank'), 'custom')
+    const sectionId = document.sections[0].id
+    document = updateSection(document, sectionId, { fields: { customTitle }, body: 'Some content.' })
+    const issues = validateDocument(document).filter((issue) => issue.sectionId === sectionId)
+    assert.deepEqual(
+      issues.map((issue) => issue.code),
+      ['blank-custom-title'],
+      `customTitle ${JSON.stringify(customTitle)}`,
+    )
+  }
+})
+
 // --- markdown.ts fixtures ---
 
 function documentWithTwoVisibleSectionsNamed(title: string) {
@@ -105,8 +119,26 @@ test('import preserves unfamiliar content in a custom section', () => {
 test('TOC slugging handles punctuation and duplicates', () => {
   assert.deepEqual(
     createTocEntries(documentWithTitles(['C++ & API!', 'C++ & API!'])).map((item) => item.href),
-    ['#c-api', '#c-api-1'],
+    ['#c--api', '#c--api-1'],
   )
+})
+
+test('TOC slugging keeps Thai letters and combining marks', () => {
+  assert.deepEqual(
+    createTocEntries(documentWithTitles(['การติดตั้ง', 'วิธีใช้ (ภาษาไทย)!'])).map((item) => item.href),
+    ['#การติดตั้ง', '#วิธีใช้-ภาษาไทย'],
+  )
+})
+
+test('TOC duplicate counter includes the H1, the TOC heading, and the Overview heading', () => {
+  let document = { ...createDocument('blank'), includeTableOfContents: true }
+  document = addSection(document, 'overview')
+  document = updateSection(document, document.sections[0].id, { body: 'Intro.' })
+  for (const title of ['Overview', 'Project Title', 'Table of Contents']) {
+    document = addSection(document, 'custom')
+    document = updateSection(document, document.sections.at(-1)!.id, { fields: { customTitle: title }, body: `${title} content.` })
+  }
+  assert.deepEqual(createTocEntries(document).map((item) => item.href), ['#overview-1', '#project-title-1', '#table-of-contents-1'])
 })
 
 test('raw HTML stays in the imported custom body', () => {
@@ -173,6 +205,12 @@ test('hidden and empty custom sections generate no empty headings', () => {
 
 test('badge URLs encode unsafe label/message characters', () => {
   assert.match(createBadgeUrl({ label: 'build status', message: 'passing/green', color: 'bright green' }), /build%20status/)
+})
+
+test('badge URLs escape dashes and underscores the Shields.io way', () => {
+  assert.equal(createBadgeUrl({ label: 'build-status', message: 'passing', color: 'green' }), 'https://img.shields.io/badge/build--status-passing-green')
+  assert.equal(createBadgeUrl({ label: 'version', message: 'v1.0-beta', color: 'blue' }), 'https://img.shields.io/badge/version-v1.0--beta-blue')
+  assert.equal(createBadgeUrl({ label: 'my_lib', message: '1.0', color: 'orange' }), 'https://img.shields.io/badge/my__lib-1.0-orange')
 })
 
 test('badges render as Markdown image syntax, not raw HTML tags', () => {
@@ -303,4 +341,54 @@ test('mergeAppliedMarkdown parses an edited badge line and keeps other preamble 
   assert.deepEqual(merged.badges, [{ id: 'b1', label: 'version', message: '1.2', color: 'orange' }])
   assert.equal(merged.sections[0].fields.customTitle, 'Imported Content')
   assert.equal(merged.sections[0].body, 'Intro paragraph.')
+})
+
+test('mergeAppliedMarkdown parses an edited badge line whose labels and messages contain dashes and underscores', () => {
+  const current = { ...createDocument('blank'), badges: [{ id: 'b1', label: 'build', message: 'passing', color: 'green' }] }
+  const badgeLine = [
+    renderBadgeMarkup({ id: 'x', label: 'build-status', message: 'v1.0-beta', color: 'green' }),
+    renderBadgeMarkup({ id: 'y', label: 'my_lib', message: 'pre-release_2', color: 'blue' }),
+  ].join(' ')
+  assert.equal(badgeLine, '![build-status](https://img.shields.io/badge/build--status-v1.0--beta-green) ![my_lib](https://img.shields.io/badge/my__lib-pre--release__2-blue)')
+  const merged = mergeAppliedMarkdown(current, importReadme(`# Title\n\n${badgeLine}\n\n## Overview\n\nText.`).document)
+
+  assert.equal(merged.badges[0].id, 'b1')
+  assert.deepEqual(merged.badges.map(({ label, message, color }) => ({ label, message, color })), [
+    { label: 'build-status', message: 'v1.0-beta', color: 'green' },
+    { label: 'my_lib', message: 'pre-release_2', color: 'blue' },
+  ])
+})
+
+test('Live Demo URL round-trips through import and Apply Markdown', () => {
+  let current = createDocument('frontend-app')
+  current = updateSection(current, current.sections[0].id, { body: 'Overview text.' })
+  const liveDemo = current.sections.find((section) => section.kind === 'live-demo')!
+  current = updateSection(current, liveDemo.id, { fields: { url: 'https://x.dev' }, body: 'Try the hosted build.' })
+  const markdown = renderReadme(current)
+  assert.match(markdown, /## Live Demo\n\n<https:\/\/x\.dev>\n\nTry the hosted build\./)
+
+  const merged = mergeAppliedMarkdown(current, importReadme(markdown).document)
+  const importedLiveDemo = merged.sections.find((section) => section.kind === 'live-demo')!
+  assert.equal(importedLiveDemo.fields.url, 'https://x.dev')
+  assert.equal(importedLiveDemo.body, 'Try the hosted build.')
+  assert.ok(!validateDocument(merged).some((issue) => issue.sectionId === importedLiveDemo.id))
+  assert.equal(renderReadme(merged), markdown)
+})
+
+test('TOC numbering counts headings written inside section bodies, like GitHub', () => {
+  let doc = createDocument('blank')
+  doc = addSection(doc, 'custom')
+  doc = updateSection(doc, doc.sections[0].id, { fields: { customTitle: 'Installation' }, body: '### Usage\n\nRun it.\n\n```md\n# Usage\n```' })
+  doc = addSection(doc, 'custom')
+  doc = updateSection(doc, doc.sections[1].id, { fields: { customTitle: 'Usage' }, body: 'Details.' })
+  assert.deepEqual(createTocEntries(doc).map((entry) => entry.href), ['#installation', '#usage-1'])
+  assert.deepEqual(bodyHeadings('## [Docs](https://x.dev) ##\n~~~\n## Hidden\n~~~\n####### not a heading'), ['Docs'])
+})
+
+test('Apply Markdown reads a single underscore in an edited badge as a space', () => {
+  const current = { ...createDocument('blank'), badges: [] }
+  const markdown = '# Title\n\n![x](https://img.shields.io/badge/build_status-my__lib-green)\n\n## Overview\n\nText.'
+  const merged = mergeAppliedMarkdown(current, importReadme(markdown).document)
+  assert.equal(merged.badges[0].label, 'build status')
+  assert.equal(merged.badges[0].message, 'my_lib')
 })

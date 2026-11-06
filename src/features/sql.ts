@@ -150,7 +150,23 @@ export function sqlLiteral(value: unknown, dialect: SqlDialect): string {
   return sqlValue(value, dialect)
 }
 
-function readSqlSegment(input: string, start: number): number {
+/** True when the quote at `start` opens a PostgreSQL escape string (`E'...'`), not an identifier ending in E. */
+function isEscapeStringStart(input: string, start: number): boolean {
+  return (input[start - 1] === 'E' || input[start - 1] === 'e') && !/[A-Za-z0-9_$]/.test(input[start - 2] ?? '')
+}
+
+/**
+ * Whether a backslash escapes the next character inside the single-quoted string at `start`.
+ * MySQL: always. PostgreSQL: only in E'...' strings. T-SQL: never. Without a dialect the
+ * DDL splitter keeps its historical behaviour of always skipping escaped characters.
+ */
+function backslashEscapesIn(input: string, start: number, dialect?: SqlDialect): boolean {
+  if (!dialect || dialect === 'mysql') return true
+  if (dialect === 'postgresql') return isEscapeStringStart(input, start)
+  return false
+}
+
+function readSqlSegment(input: string, start: number, dialect?: SqlDialect): number {
   const quote = input[start]
   if (quote === '$') {
     const delimiter = input.slice(start).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)?.[0]
@@ -162,13 +178,14 @@ function readSqlSegment(input: string, start: number): number {
   }
   if (quote !== "'" && quote !== '"' && quote !== '`' && quote !== '[') return start + 1
   const closing = quote === '[' ? ']' : quote
+  const backslashEscapes = quote === "'" && backslashEscapesIn(input, start, dialect)
   let index = start + 1
   while (index < input.length) {
     if (input[index] === closing) {
       if (quote !== '[' && input[index + 1] === closing) { index += 2; continue }
       return index + 1
     }
-    if (quote === "'" && input[index] === '\\' && index + 1 < input.length) index += 2
+    if (backslashEscapes && input[index] === '\\' && index + 1 < input.length) index += 2
     else index++
   }
   throw new Error('Unclosed SQL quoted value or identifier.')
@@ -191,8 +208,9 @@ export function previewSqlParameters(query: string, parametersInput: string, dia
   let output = ''
   for (let index = 0; index < query.length;) {
     const character = query[index]
-    if (character === "'" || character === '"' || character === '`' || character === '[' || (character === '$' && /^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/.test(query.slice(index)))) {
-      const end = readSqlSegment(query, index)
+    // `[` is a bracketed identifier only in T-SQL; PostgreSQL uses it for array subscripts.
+    if (character === "'" || character === '"' || character === '`' || (character === '[' && dialect === 'transactsql') || (character === '$' && /^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/.test(query.slice(index)))) {
+      const end = readSqlSegment(query, index, dialect)
       output += query.slice(index, end)
       index = end
       continue
@@ -270,21 +288,29 @@ function splitDdlColumns(body: string): string[] {
   return items
 }
 
+const SQL_INTEGER_TYPES = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'integer', 'int2', 'int4', 'serial', 'serial2', 'serial4', 'smallserial'])
+const SQL_BIGINT_TYPES = new Set(['bigint', 'int8', 'bigserial', 'serial8'])
+const SQL_FLOAT_TYPES = new Set(['real', 'double', 'float', 'float4', 'float8', 'numeric', 'decimal', 'money'])
+const SQL_BOOLEAN_TYPES = new Set(['bool', 'boolean', 'bit'])
+const SQL_JSON_TYPES = new Set(['json', 'jsonb'])
+const SQL_BINARY_TYPES = new Set(['bytea', 'blob', 'tinyblob', 'mediumblob', 'longblob', 'binary', 'varbinary'])
+
 function sqlTypeToTarget(type: string, language: SqlTargetLanguage): string {
-  const normalized = type.toLowerCase().replace(/\(.*/, '').trim()
+  // Match the whole base type name so prefixes such as `int` do not capture `interval`.
+  const normalized = type.toLowerCase().replace(/\(.*/, '').trim().split(/\s+/)[0]
   if (language === 'typescript') {
-    if (/^(smallint|integer|int|serial|real|double|float|numeric|decimal|money)/.test(normalized)) return 'number'
-    if (/^(bigint|bigserial)/.test(normalized)) return 'string'
-    if (/^(bool|boolean|bit)/.test(normalized)) return 'boolean'
-    if (/^(json|jsonb)/.test(normalized)) return 'unknown'
+    if (SQL_INTEGER_TYPES.has(normalized) || SQL_FLOAT_TYPES.has(normalized)) return 'number'
+    if (SQL_BIGINT_TYPES.has(normalized)) return 'string'
+    if (SQL_BOOLEAN_TYPES.has(normalized)) return 'boolean'
+    if (SQL_JSON_TYPES.has(normalized)) return 'unknown'
     return 'string'
   }
-  if (/^(smallint|integer|int|serial)/.test(normalized)) return 'int'
-  if (/^(bigint|bigserial)/.test(normalized)) return 'int64'
-  if (/^(real|double|float|numeric|decimal|money)/.test(normalized)) return 'float64'
-  if (/^(bool|boolean|bit)/.test(normalized)) return 'bool'
-  if (/^(json|jsonb)/.test(normalized)) return 'json.RawMessage'
-  if (/^(bytea|blob|binary|varbinary)/.test(normalized)) return '[]byte'
+  if (SQL_INTEGER_TYPES.has(normalized)) return 'int'
+  if (SQL_BIGINT_TYPES.has(normalized)) return 'int64'
+  if (SQL_FLOAT_TYPES.has(normalized)) return 'float64'
+  if (SQL_BOOLEAN_TYPES.has(normalized)) return 'bool'
+  if (SQL_JSON_TYPES.has(normalized)) return 'json.RawMessage'
+  if (SQL_BINARY_TYPES.has(normalized)) return '[]byte'
   return 'string'
 }
 
@@ -294,7 +320,7 @@ export function createTableToTypes(input: string, language: SqlTargetLanguage): 
   const tableName = match[1].split('.').at(-1)!
   const columns = splitDdlColumns(match[2]).flatMap((definition) => {
     if (/^(constraint|primary\s+key|foreign\s+key|unique|check|exclude|key|index)\b/i.test(definition)) return []
-    const column = definition.match(/^(?:`|"|\[)?([A-Za-z_][A-Za-z0-9_$]*)(?:`|"|\])?\s+([A-Za-z]+(?:\s+[A-Za-z]+)?(?:\s*\([^)]*\))?)/)
+    const column = definition.match(/^(?:`|"|\[)?([A-Za-z_][A-Za-z0-9_$]*)(?:`|"|\])?\s+([A-Za-z][A-Za-z0-9_]*(?:\s+[A-Za-z][A-Za-z0-9_]*)?(?:\s*\([^)]*\))?)/)
     if (!column) throw new Error(`Unable to read column definition: ${definition}`)
     return [{ name: column[1], type: column[2], nullable: !/\bnot\s+null\b|\bprimary\s+key\b/i.test(definition) }]
   })
@@ -338,6 +364,8 @@ export function minifySql(input: string): string {
   }
   const readQuoted = (delimiter: string, escapeDoubled = true) => {
     const start = index
+    // Standard SQL: backslash is literal, except inside PostgreSQL E'...' strings.
+    const backslashEscapes = delimiter === "'" && isEscapeStringStart(input, start)
     let closed = false
     index++
     while (index < input.length) {
@@ -347,7 +375,7 @@ export function minifySql(input: string): string {
         closed = true
         break
       }
-      if (input[index] === '\\' && delimiter === "'" && index + 1 < input.length) index += 2
+      if (backslashEscapes && input[index] === '\\' && index + 1 < input.length) index += 2
       else index++
     }
     if (!closed) throw new Error('Unclosed SQL quoted value or identifier.')

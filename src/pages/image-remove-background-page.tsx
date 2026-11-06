@@ -1,17 +1,20 @@
 import { Download, Eraser, ImagePlus, Wand2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
 import { removeImageBackground } from '@/features/images/remove-background'
+import { MAX_IMAGE_DIMENSION, validateImageForResize } from '@/features/images/resize'
 import { cn } from '@/lib/utils'
 
 function download(href: string, filename: string) {
   const link = document.createElement('a')
   link.href = href
   link.download = filename
+  document.body.appendChild(link)
   link.click()
+  link.remove()
 }
 
 function exportFileName(originalName: string) {
@@ -35,10 +38,26 @@ export function ImageRemoveBackgroundPage() {
   const [isDraggingFile, setIsDraggingFile] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const objectUrlsRef = useRef({ imageSrc: '', resultUrl: '' })
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    objectUrlsRef.current = { imageSrc, resultUrl }
+  }, [imageSrc, resultUrl])
+
+  // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
+  useEffect(() => () => {
+    mountedRef.current = false
+    const { imageSrc: latestImageSrc, resultUrl: latestResultUrl } = objectUrlsRef.current
+    if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
+    if (latestResultUrl) URL.revokeObjectURL(latestResultUrl)
+  }, [])
 
   const handleFile = (nextFile: File) => {
-    if (!nextFile.type.startsWith('image/')) {
-      setError('Please choose an image file.')
+    // Same limits as Image Resize: the background-removal model only reads PNG, JPEG, and WebP reliably.
+    const validationError = validateImageForResize(nextFile)
+    if (validationError) {
+      setError(validationError)
       return
     }
     if (imageSrc) URL.revokeObjectURL(imageSrc)
@@ -67,6 +86,8 @@ export function ImageRemoveBackgroundPage() {
     setProgress(null)
     try {
       const blob = await removeImageBackground(file, (key, current, total) => setProgress({ key, current, total }))
+      // The page was left while the model was running: nothing will show or revoke this result.
+      if (!mountedRef.current) return
       if (resultUrl) URL.revokeObjectURL(resultUrl)
       setResultUrl(URL.createObjectURL(blob))
     } catch (cause) {
@@ -97,7 +118,7 @@ export function ImageRemoveBackgroundPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(event) => {
             const nextFile = event.target.files?.[0]
@@ -140,14 +161,29 @@ export function ImageRemoveBackgroundPage() {
           >
             <ImagePlus className="size-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Drag and drop an image here, or click to browse.</p>
-            <p className="text-xs text-muted-foreground/80">PNG, JPG, WebP, and more</p>
+            <p className="text-xs text-muted-foreground/80">PNG, JPEG, or WebP · up to 20 MiB · 10,000 px per side</p>
           </div>
         ) : (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="flex min-h-0 flex-col gap-2">
               <span className="text-sm font-medium text-muted-foreground">Original</span>
               <div className="flex min-h-70 flex-1 items-center justify-center overflow-auto rounded-lg border border-border bg-muted/30 p-3">
-                <img src={imageSrc} alt="Original" className="max-h-full max-w-full object-contain" />
+                <img
+                  src={imageSrc}
+                  alt="Original"
+                  className="max-h-full max-w-full object-contain"
+                  onLoad={(event) => {
+                    const image = event.currentTarget
+                    if (image.naturalWidth > MAX_IMAGE_DIMENSION || image.naturalHeight > MAX_IMAGE_DIMENSION) {
+                      setFile(null)
+                      setError(`Images must be ${MAX_IMAGE_DIMENSION.toLocaleString()} px or smaller on each side.`)
+                    }
+                  }}
+                  onError={() => {
+                    setFile(null)
+                    setError('Could not read this image file.')
+                  }}
+                />
               </div>
             </div>
             <div className="flex min-h-0 flex-col gap-2">

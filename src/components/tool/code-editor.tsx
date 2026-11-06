@@ -115,13 +115,13 @@ export function CodeEditor({
               : language === "sql"
                 ? sql()
             : [];
-    const base = [fontTheme(fontSize), languageExtension];
+    const base = [fontTheme(fontSize), languageExtension, EditorView.contentAttributes.of({ "aria-label": ariaLabel })];
     const withLanguageHighlighting = language === "go" ? [...base, EditorView.decorations.of(goHighlightExtension(value))] : base;
     const withWrap = wrap ? [...withLanguageHighlighting, EditorView.lineWrapping] : withLanguageHighlighting;
     return errorLine
       ? [...withWrap, errorLineExtension(value, errorLine)]
       : withWrap;
-  }, [fontSize, language, wrap, errorLine, value]);
+  }, [fontSize, language, wrap, errorLine, value, ariaLabel]);
 
   const importFile = async (file: File | undefined) => {
     if (!file || !onChange) return;
@@ -144,7 +144,6 @@ export function CodeEditor({
 
   return (
     <div
-      aria-label={ariaLabel}
       className={cn(
         fitContent
           ? "flex w-full flex-col overflow-hidden"
