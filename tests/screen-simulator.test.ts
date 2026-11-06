@@ -89,3 +89,33 @@ test('keeps generated noise within [-1, 1]', () => {
     assert.ok(samples.some((value) => value !== 0), color)
   }
 })
+
+test('maps gray levels from black to white', async () => {
+  const { grayHex } = await import('../src/features/screen-simulator/screen.ts')
+  assert.equal(grayHex(0), '#000000')
+  assert.equal(grayHex(128), '#808080')
+  assert.equal(grayHex(255), '#FFFFFF')
+  assert.equal(grayHex(300), '#FFFFFF')
+})
+
+test('tracks countdown and stopwatch time across pauses', async () => {
+  const { STOPPED_TIMER, countdownRemaining, durationFromParts, formatTimer, pauseTimer, startTimer, timerElapsed } = await import('../src/features/screen-simulator/screen.ts')
+  let state = startTimer(STOPPED_TIMER, 1_000)
+  assert.equal(timerElapsed(state, 3_500), 2_500)
+  state = pauseTimer(state, 3_500)
+  assert.equal(timerElapsed(state, 99_000), 2_500)
+  state = startTimer(state, 10_000)
+  assert.equal(timerElapsed(state, 11_000), 3_500)
+  assert.equal(startTimer(state, 50_000), state, 'starting a running timer keeps its start time')
+
+  const total = durationFromParts(0, 1, 30)
+  assert.equal(total, 90_000)
+  assert.equal(countdownRemaining(total, state, 11_000), 86_500)
+  assert.equal(countdownRemaining(total, state, 500_000), 0)
+  assert.equal(durationFromParts(-1, Number.NaN, 5.9), 5_000)
+
+  assert.equal(formatTimer(86_500), '01:27')
+  assert.equal(formatTimer(3_725_000), '1:02:05')
+  assert.equal(formatTimer(65_432, true), '01:05.43')
+  assert.equal(formatTimer(0), '00:00')
+})

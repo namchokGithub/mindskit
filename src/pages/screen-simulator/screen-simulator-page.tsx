@@ -1,4 +1,4 @@
-import { Pause, Play, Shuffle, TriangleAlert } from 'lucide-react'
+import { Flag, Pause, Play, RotateCcw, Shuffle, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -13,34 +13,44 @@ import {
   MAX_CALL_MEMBERS,
   MAX_KELVIN,
   MIN_KELVIN,
+  PRANK_CRACK_IMAGES,
   RESOLUTIONS,
   SAMPLE_HACKER_CODE,
+  STOPPED_TIMER,
+  countdownRemaining,
+  durationFromParts,
+  grayHex,
   hexToRgbText,
   kelvinToHex,
   parseMemberNames,
   parseScreenColor,
+  pauseTimer,
   randomMemberNames,
+  startTimer,
+  timerElapsed,
   type ProgressMode,
+  type TimerState,
 } from '@/features/screen-simulator/screen'
 import { cn } from '@/lib/utils'
 
 import { BsodScreen, ColorScreen, HackerTypingScreen, type BsodVariant } from './screens/basic-screens'
 import { UpdateScreen, VideoCallScreen, type CallStyle, type UpdateVariant } from './screens/call-and-update-screens'
+import { BrokenScreen, CountdownScreen, HackerSimulatorScreen, QrScreen, StopwatchScreen } from './screens/extra-screens'
 import { NoiseScreen } from './screens/noise-screen'
 import { DvdScreen, FlipClockScreen, MatrixScreen, NoSignalScreen, QuotesScreen } from './screens/screensaver-screens'
 import { ScreenStage } from './stage'
 
 const TABS = [
-  { id: 'colors', label: 'Colors', modes: [{ id: 'solid', label: 'Solid color' }, { id: 'lighting', label: 'Lighting' }] },
-  { id: 'pranks', label: 'Screen Pranks', modes: [{ id: 'hacker', label: 'Hacker Typing' }, { id: 'bsod', label: 'Blue Screen' }, { id: 'call', label: 'Fake Video Call' }, { id: 'update', label: 'Fake Update' }] },
-  { id: 'screensaver', label: 'Screensaver', modes: [{ id: 'dvd', label: 'DVD' }, { id: 'clock', label: 'Flip Clock' }, { id: 'quotes', label: 'Quotes' }, { id: 'no-signal', label: 'No Signal' }, { id: 'matrix', label: 'Matrix' }] },
+  { id: 'colors', label: 'Colors', modes: [{ id: 'solid', label: 'Solid color' }, { id: 'gray', label: 'Gray' }, { id: 'lighting', label: 'Lighting' }] },
+  { id: 'pranks', label: 'Screen Pranks', modes: [{ id: 'hacker', label: 'Hacker Typing' }, { id: 'hacker-sim', label: 'Hacker Simulator' }, { id: 'broken', label: 'Broken Screen' }, { id: 'bsod', label: 'Blue Screen' }, { id: 'call', label: 'Fake Video Call' }, { id: 'update', label: 'Fake Update' }] },
+  { id: 'screensaver', label: 'Screensaver', modes: [{ id: 'dvd', label: 'DVD' }, { id: 'clock', label: 'Flip Clock' }, { id: 'quotes', label: 'Quotes' }, { id: 'no-signal', label: 'No Signal' }, { id: 'matrix', label: 'Matrix' }, { id: 'countdown', label: 'Countdown' }, { id: 'stopwatch', label: 'Stopwatch' }, { id: 'qr', label: 'QR Code' }] },
   { id: 'noise', label: 'White Noise', modes: [] },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
 const BSOD_VARIANTS: { id: BsodVariant; label: string }[] = [{ id: 'win10', label: 'Windows 10' }, { id: 'win11', label: 'Windows 11' }, { id: 'xp', label: 'Windows XP' }]
-const CALL_STYLES: { id: CallStyle; label: string }[] = [{ id: 'teams', label: 'Microsoft Teams' }, { id: 'meet', label: 'Google Meet' }]
+const CALL_STYLES: { id: CallStyle; label: string }[] = [{ id: 'teams', label: 'Microsoft Teams' }, { id: 'meet', label: 'Google Meet' }, { id: 'zoom', label: 'Zoom' }, { id: 'discord', label: 'Discord' }]
 const UPDATE_VARIANTS: { id: UpdateVariant; label: string }[] = [
   { id: 'win10', label: 'Windows 10' },
   { id: 'win11', label: 'Windows 11' },
@@ -164,6 +174,40 @@ export function ScreenSimulatorPage() {
   const members = parseMemberNames(membersText)
   const [updateVariant, setUpdateVariant] = useState<UpdateVariant>('win10')
 
+  const [grayLevel, setGrayLevel] = useState(128)
+  const [hackerSimSpeed, setHackerSimSpeed] = useState(1)
+  const [crackId, setCrackId] = useState<string>(PRANK_CRACK_IMAGES[0].id)
+  const crack = PRANK_CRACK_IMAGES.find((item) => item.id === crackId) ?? PRANK_CRACK_IMAGES[0]
+
+  // Countdown and stopwatch use performance.now() timestamps.
+  const [countdownParts, setCountdownParts] = useState({ hours: '0', minutes: '5', seconds: '0' })
+  const countdownTotal = durationFromParts(Number(countdownParts.hours), Number(countdownParts.minutes), Number(countdownParts.seconds))
+  const [countdownState, setCountdownState] = useState<TimerState>(STOPPED_TIMER)
+  const [stopwatchOffset, setStopwatchOffset] = useState({ minutes: '0', seconds: '0' })
+  const stopwatchStart = durationFromParts(0, Number(stopwatchOffset.minutes), Number(stopwatchOffset.seconds))
+  const [stopwatchState, setStopwatchState] = useState<TimerState>({ ...STOPPED_TIMER })
+  const [laps, setLaps] = useState<number[]>([])
+  const [qrContent, setQrContent] = useState('https://mindskit.dev')
+  const [qrDescription, setQrDescription] = useState('Scan to open MindsKit')
+  const [qrDark, setQrDark] = useState(false)
+
+  useEffect(() => {
+    // Stop the countdown exactly when it reaches zero.
+    if (!countdownState.running) return
+    const remaining = countdownRemaining(countdownTotal, countdownState, performance.now())
+    const id = window.setTimeout(() => setCountdownState((current) => pauseTimer(current, current.startedAt + (countdownTotal - current.accumulatedMs))), remaining)
+    return () => window.clearTimeout(id)
+  }, [countdownState, countdownTotal])
+
+  const updateCountdownPart = (part: 'hours' | 'minutes' | 'seconds', value: string) => {
+    setCountdownParts((current) => ({ ...current, [part]: value }))
+    setCountdownState(STOPPED_TIMER)
+  }
+  const resetStopwatch = (offset = stopwatchStart) => {
+    setStopwatchState({ ...STOPPED_TIMER, accumulatedMs: offset })
+    setLaps([])
+  }
+
   // Screensaver
   const [hour12, setHour12] = useState(false)
   const [showSeconds, setShowSeconds] = useState(true)
@@ -200,16 +244,18 @@ export function ScreenSimulatorPage() {
     if (tab !== 'noise') setPlaying(false)
   }, [tab])
 
-  const isPrank = tab === 'pranks' && mode !== 'hacker'
+  const isPrank = tab === 'pranks' && (mode === 'bsod' || mode === 'call' || mode === 'update')
   const progressSupported = (mode === 'bsod' && bsodVariant !== 'xp') || mode === 'update'
 
   let screen: ReactNode = null
   let background = '#000000'
   if (tab === 'colors') {
-    background = mode === 'lighting' ? kelvinToHex(kelvin) : colorHex
+    background = mode === 'lighting' ? kelvinToHex(kelvin) : mode === 'gray' ? grayHex(grayLevel) : colorHex
     screen = <ColorScreen hex={background} />
   } else if (tab === 'pranks') {
     if (mode === 'hacker') screen = <HackerTypingScreen code={hackerCode} charsPerTick={hackerSpeed} loop={hackerLoop} />
+    else if (mode === 'hacker-sim') screen = <HackerSimulatorScreen speed={hackerSimSpeed} />
+    else if (mode === 'broken') screen = <BrokenScreen src={crack.src} />
     else if (mode === 'bsod') screen = <BsodScreen variant={bsodVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
     else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} />
     else screen = <UpdateScreen variant={updateVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
@@ -218,7 +264,10 @@ export function ScreenSimulatorPage() {
     else if (mode === 'clock') screen = <FlipClockScreen hour12={hour12} showSeconds={showSeconds} />
     else if (mode === 'quotes') screen = <QuotesScreen language={quoteLanguage} intervalSeconds={quoteInterval} />
     else if (mode === 'no-signal') screen = <NoSignalScreen />
-    else screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} />
+    else if (mode === 'matrix') screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} />
+    else if (mode === 'countdown') screen = <CountdownScreen totalMs={countdownTotal} state={countdownState} />
+    else if (mode === 'stopwatch') screen = <StopwatchScreen state={stopwatchState} laps={laps} />
+    else screen = <QrScreen content={qrContent} description={qrDescription} dark={qrDark} />
   } else {
     screen = <NoiseScreen color={noiseColor} playing={playing} remainingSeconds={remainingSeconds} />
   }
@@ -270,6 +319,81 @@ export function ScreenSimulatorPage() {
                 <input value={rgbText} onChange={(event) => { setRgbText(event.target.value); const hex = parseScreenColor(event.target.value); if (hex && /,|rgb/i.test(event.target.value)) { setColorHex(hex); setColorText(hex) } }} aria-invalid={rgbTextError} placeholder="12, 23, 12" className={cn(fieldClass, 'font-mono')} />
               </Field>
               {(colorTextError || rgbTextError) && <p className="text-xs text-destructive">Use #RGB, #RRGGBB, or three numbers 0–255 such as 12, 23, 12.</p>}
+            </>
+          )}
+
+          {tab === 'colors' && mode === 'gray' && (
+            <Field label={`Gray level: ${grayLevel} · ${grayHex(grayLevel)}`}>
+              <input type="range" min={0} max={255} value={grayLevel} onChange={(event) => setGrayLevel(Number(event.target.value))} aria-label="Gray level from black to white" className="h-2 cursor-pointer appearance-none rounded-full accent-primary" style={{ background: 'linear-gradient(90deg, #000000, #FFFFFF)' }} />
+              <span className="flex justify-between text-[0.7rem]"><span>Black</span><span>White</span></span>
+            </Field>
+          )}
+
+          {tab === 'pranks' && mode === 'hacker-sim' && (
+            <>
+              <Field label={`Speed: ${hackerSimSpeed}×`}>
+                <input type="range" min={0.25} max={3} step={0.25} value={hackerSimSpeed} onChange={(event) => setHackerSimSpeed(Number(event.target.value))} className="accent-primary" />
+              </Field>
+              <p className="text-xs text-muted-foreground">Press any key while the screen is shown (outside these fields) to pop ACCESS GRANTED or DENIED.</p>
+            </>
+          )}
+
+          {tab === 'pranks' && mode === 'broken' && (
+            <div className="grid grid-cols-3 gap-2">
+              {PRANK_CRACK_IMAGES.map((item) => (
+                <button key={item.id} type="button" onClick={() => setCrackId(item.id)} aria-pressed={crackId === item.id} aria-label={item.label} className={cn('overflow-hidden rounded-lg border border-border', crackId === item.id && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}>
+                  <img src={item.src} alt="" className="aspect-video w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === 'screensaver' && mode === 'countdown' && (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {(['hours', 'minutes', 'seconds'] as const).map((part) => (
+                  <Field key={part} label={part[0].toUpperCase() + part.slice(1)}>
+                    <input type="number" min={0} max={part === 'hours' ? 99 : 59} value={countdownParts[part]} onChange={(event) => updateCountdownPart(part, event.target.value)} className={fieldClass} />
+                  </Field>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {countdownState.running
+                  ? <Button type="button" onClick={() => setCountdownState((current) => pauseTimer(current, performance.now()))}><Pause />Pause</Button>
+                  : <Button type="button" disabled={countdownTotal === 0 || countdownRemaining(countdownTotal, countdownState, performance.now()) === 0} onClick={() => setCountdownState((current) => startTimer(current, performance.now()))}><Play />Start</Button>}
+                <Button type="button" variant="outline" onClick={() => setCountdownState(STOPPED_TIMER)}><RotateCcw />Reset</Button>
+              </div>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'stopwatch' && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {(['minutes', 'seconds'] as const).map((part) => (
+                  <Field key={part} label={`Start at (${part})`}>
+                    <input type="number" min={0} max={59} value={stopwatchOffset[part]} onChange={(event) => { const next = { ...stopwatchOffset, [part]: event.target.value }; setStopwatchOffset(next); resetStopwatch(durationFromParts(0, Number(next.minutes), Number(next.seconds))) }} className={fieldClass} />
+                  </Field>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {stopwatchState.running
+                  ? <Button type="button" onClick={() => setStopwatchState((current) => pauseTimer(current, performance.now()))}><Pause />Pause</Button>
+                  : <Button type="button" onClick={() => setStopwatchState((current) => startTimer(current, performance.now()))}><Play />Start</Button>}
+                <Button type="button" variant="outline" disabled={!stopwatchState.running} onClick={() => setLaps((current) => [...current, timerElapsed(stopwatchState, performance.now())])}><Flag />Lap</Button>
+                <Button type="button" variant="outline" onClick={() => resetStopwatch()}><RotateCcw />Reset</Button>
+              </div>
+            </>
+          )}
+
+          {tab === 'screensaver' && mode === 'qr' && (
+            <>
+              <Field label="Text or URL">
+                <Textarea value={qrContent} onChange={(event) => setQrContent(event.target.value)} className="min-h-20 text-sm field-sizing-fixed" />
+              </Field>
+              <Field label="Description (shown under the QR code)">
+                <Textarea value={qrDescription} onChange={(event) => setQrDescription(event.target.value)} className="min-h-16 text-sm field-sizing-fixed" />
+              </Field>
+              <Segmented label="QR background" value={qrDark ? 'dark' : 'light'} options={[{ id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }] as const} onChange={(value) => setQrDark(value === 'dark')} />
             </>
           )}
 

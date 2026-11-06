@@ -1,4 +1,4 @@
-import { Captions, Hand, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, PhoneOff, Smile, Users, Video } from 'lucide-react'
+import { Captions, Circle, Hand, LayoutGrid, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, PhoneOff, ShieldCheck, Smile, Users, Video, Volume2 } from 'lucide-react'
 
 import { avatarInitials, formatCallDuration, progressPercent, type ProgressMode } from '@/features/screen-simulator/screen'
 
@@ -19,7 +19,25 @@ function gridColumns(count: number) {
   return 4
 }
 
-export type CallStyle = 'teams' | 'meet'
+export type CallStyle = 'teams' | 'meet' | 'zoom' | 'discord'
+
+const CALL_THEMES: Record<CallStyle, { background: string; tile: string; radius: string; font: string; nameBackground: string }> = {
+  teams: { background: '#1F1F1F', tile: '#292929', radius: '0.6cqh', font: '"Segoe UI", system-ui, sans-serif', nameBackground: 'rgba(0,0,0,0.45)' },
+  meet: { background: '#202124', tile: '#3C4043', radius: '1.2cqh', font: '"Google Sans", Roboto, system-ui, sans-serif', nameBackground: 'transparent' },
+  zoom: { background: '#1A1A1A', tile: '#232323', radius: '0.4cqh', font: 'Lato, "Helvetica Neue", system-ui, sans-serif', nameBackground: 'rgba(0,0,0,0.6)' },
+  discord: { background: '#313338', tile: '#2B2D31', radius: '1cqh', font: '"gg sans", "Noto Sans", "Helvetica Neue", system-ui, sans-serif', nameBackground: 'rgba(0,0,0,0.55)' },
+}
+
+const iconSize = { width: '2.6cqh', height: '2.6cqh' }
+
+function ToolbarButton({ icon: Icon, label, background, color, round }: { icon: typeof Mic; label?: string; background?: string; color?: string; round?: boolean }) {
+  return (
+    <span className={round ? 'flex items-center justify-center rounded-full' : 'flex flex-col items-center justify-center gap-[0.4cqh] rounded-md px-[0.8cqw]'} style={{ background, color, ...(round ? { width: '5.6cqh', height: '5.6cqh' } : { minWidth: '7cqh', height: '7cqh' }) }}>
+      <Icon style={iconSize} />
+      {label && <span style={{ fontSize: '1.3cqh' }}>{label}</span>}
+    </span>
+  )
+}
 
 export function VideoCallScreen({ style, selfName, members }: { style: CallStyle; selfName: string; members: string[] }) {
   const elapsed = useElapsed(1000, style)
@@ -27,24 +45,38 @@ export function VideoCallScreen({ style, selfName, members }: { style: CallStyle
   const participants = [...members, `${selfName.trim() || 'You'} (You)`]
   const columns = gridColumns(participants.length)
   const rows = Math.ceil(participants.length / columns)
-  const meet = style === 'meet'
-  const tileBackground = meet ? '#3C4043' : '#292929'
+  const theme = CALL_THEMES[style]
+  const avatarSize = `${Math.min(18, 34 / rows)}cqh`
 
   return (
-    <div className="absolute inset-0 flex flex-col text-white" style={{ background: meet ? '#202124' : '#1F1F1F', fontFamily: meet ? '"Google Sans", Roboto, system-ui, sans-serif' : '"Segoe UI", system-ui, sans-serif' }}>
-      {!meet && (
+    <div className="absolute inset-0 flex flex-col text-white" style={{ background: theme.background, fontFamily: theme.font }}>
+      {style === 'teams' && (
         <div className="flex items-center justify-between border-b border-white/10 px-[2cqw]" style={{ height: '7cqh', background: '#141414', fontSize: '1.9cqh' }}>
           <span className="tabular-nums">{formatCallDuration(elapsed)}</span>
           <div className="flex items-center gap-[1.4cqw] text-white/80">
-            <Users style={{ width: '2.6cqh', height: '2.6cqh' }} />
-            <MessageSquare style={{ width: '2.6cqh', height: '2.6cqh' }} />
-            <Hand style={{ width: '2.6cqh', height: '2.6cqh' }} />
-            <Smile style={{ width: '2.6cqh', height: '2.6cqh' }} />
-            <MoreHorizontal style={{ width: '2.6cqh', height: '2.6cqh' }} />
+            <Users style={iconSize} />
+            <MessageSquare style={iconSize} />
+            <Hand style={iconSize} />
+            <Smile style={iconSize} />
+            <MoreHorizontal style={iconSize} />
             <span className="flex items-center gap-[0.5cqw] rounded-md px-[1cqw] py-[0.6cqh]" style={{ background: '#C4314B' }}>
               <PhoneOff style={{ width: '2.4cqh', height: '2.4cqh' }} />Leave
             </span>
           </div>
+        </div>
+      )}
+      {style === 'zoom' && (
+        <div className="flex items-center justify-between px-[2cqw]" style={{ height: '5cqh', fontSize: '1.7cqh' }}>
+          <span className="flex items-center gap-[0.5cqw] text-[#23D959]"><ShieldCheck style={{ width: '2.2cqh', height: '2.2cqh' }} />Zoom Meeting</span>
+          <span className="tabular-nums text-white/80">{formatCallDuration(elapsed)}</span>
+          <span className="flex items-center gap-[0.5cqw] text-white/80"><LayoutGrid style={{ width: '2.2cqh', height: '2.2cqh' }} />Gallery View</span>
+        </div>
+      )}
+      {style === 'discord' && (
+        <div className="flex items-center gap-[1cqw] border-b border-black/30 px-[2cqw]" style={{ height: '6cqh', fontSize: '2cqh', background: '#313338' }}>
+          <Volume2 style={iconSize} className="text-white/60" />
+          <span className="font-semibold">General</span>
+          <span className="text-white/50 tabular-nums" style={{ fontSize: '1.6cqh' }}>{formatCallDuration(elapsed)}</span>
         </div>
       )}
 
@@ -52,13 +84,18 @@ export function VideoCallScreen({ style, selfName, members }: { style: CallStyle
         {participants.map((name, index) => {
           const display = name.replace(/ \(You\)$/, '')
           const muted = index % 3 === 1
+          const speaking = style !== 'teams' && index === 0
           return (
-            <div key={`${name}-${index}`} className="relative flex min-h-0 items-center justify-center overflow-hidden" style={{ background: tileBackground, borderRadius: meet ? '1.2cqh' : '0.6cqh' }}>
-              <div className="flex items-center justify-center rounded-full font-semibold" style={{ background: colorFor(display), width: `${Math.min(18, 34 / rows)}cqh`, height: `${Math.min(18, 34 / rows)}cqh`, fontSize: `${Math.min(6.5, 12 / rows)}cqh` }}>
+            <div
+              key={`${name}-${index}`}
+              className="relative flex min-h-0 items-center justify-center overflow-hidden"
+              style={{ background: theme.tile, borderRadius: theme.radius, boxShadow: speaking ? `inset 0 0 0 0.4cqh ${style === 'zoom' ? '#23D959' : style === 'discord' ? '#23A55A' : '#8AB4F8'}` : undefined }}
+            >
+              <div className="flex items-center justify-center rounded-full font-semibold" style={{ background: colorFor(display), width: avatarSize, height: avatarSize, fontSize: `${Math.min(6.5, 12 / rows)}cqh` }}>
                 {avatarInitials(display)}
               </div>
-              <span className="absolute bottom-[1cqh] left-[1cqh] flex items-center gap-[0.5cqw] rounded px-[0.6cqw] py-[0.3cqh]" style={{ fontSize: '1.7cqh', background: meet ? 'transparent' : 'rgba(0,0,0,0.45)' }}>
-                {muted && <MicOff style={{ width: '1.8cqh', height: '1.8cqh' }} />}
+              <span className="absolute bottom-[1cqh] left-[1cqh] flex items-center gap-[0.5cqw] rounded px-[0.6cqw] py-[0.3cqh]" style={{ fontSize: '1.7cqh', background: theme.nameBackground }}>
+                {muted && <MicOff style={{ width: '1.8cqh', height: '1.8cqh' }} className={style === 'zoom' || style === 'discord' ? 'text-[#F23F43]' : undefined} />}
                 {name}
               </span>
             </div>
@@ -66,31 +103,55 @@ export function VideoCallScreen({ style, selfName, members }: { style: CallStyle
         })}
       </div>
 
-      {meet ? (
+      {style === 'meet' && (
         <div className="flex items-center justify-between px-[2cqw]" style={{ height: '10cqh', fontSize: '1.9cqh' }}>
           <span className="tabular-nums text-white/90">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} | abc-defg-hij</span>
           <div className="flex items-center gap-[1cqw]">
-            {[Mic, Video, Captions, Smile, MonitorUp, Hand, MoreHorizontal].map((Icon, index) => (
-              <span key={index} className="flex items-center justify-center rounded-full" style={{ background: '#3C4043', width: '5.6cqh', height: '5.6cqh' }}>
-                <Icon style={{ width: '2.6cqh', height: '2.6cqh' }} />
-              </span>
-            ))}
+            {[Mic, Video, Captions, Smile, MonitorUp, Hand, MoreHorizontal].map((Icon, index) => <ToolbarButton key={index} icon={Icon} background="#3C4043" round />)}
             <span className="flex items-center justify-center rounded-full" style={{ background: '#EA4335', width: '8cqh', height: '5.6cqh' }}>
-              <PhoneOff style={{ width: '2.6cqh', height: '2.6cqh' }} />
+              <PhoneOff style={iconSize} />
             </span>
           </div>
           <div className="flex items-center gap-[1.4cqw] text-white/80">
-            <Users style={{ width: '2.6cqh', height: '2.6cqh' }} />
-            <MessageSquare style={{ width: '2.6cqh', height: '2.6cqh' }} />
+            <Users style={iconSize} />
+            <MessageSquare style={iconSize} />
           </div>
         </div>
-      ) : (
+      )}
+      {style === 'teams' && (
         <div className="flex items-center justify-center gap-[1.4cqw] text-white/80" style={{ height: '8cqh' }}>
           {[Mic, Video, MonitorUp].map((Icon, index) => (
             <span key={index} className="flex items-center justify-center rounded-md" style={{ background: '#2D2D2D', width: '6cqh', height: '5.2cqh' }}>
-              <Icon style={{ width: '2.6cqh', height: '2.6cqh' }} />
+              <Icon style={iconSize} />
             </span>
           ))}
+        </div>
+      )}
+      {style === 'zoom' && (
+        <div className="flex items-center justify-between px-[2cqw] text-white/90" style={{ height: '9cqh', background: '#111111' }}>
+          <div className="flex gap-[0.6cqw]">
+            <ToolbarButton icon={Mic} label="Mute" />
+            <ToolbarButton icon={Video} label="Stop Video" />
+          </div>
+          <div className="flex gap-[0.6cqw]">
+            <ToolbarButton icon={Users} label="Participants" />
+            <ToolbarButton icon={MessageSquare} label="Chat" />
+            <ToolbarButton icon={MonitorUp} label="Share Screen" color="#23D959" />
+            <ToolbarButton icon={Circle} label="Record" />
+            <ToolbarButton icon={Smile} label="Reactions" />
+          </div>
+          <span className="rounded-md px-[1.2cqw] py-[0.8cqh] font-semibold" style={{ background: '#E02828', fontSize: '1.7cqh' }}>End</span>
+        </div>
+      )}
+      {style === 'discord' && (
+        <div className="flex items-center justify-center gap-[1cqw]" style={{ height: '10cqh' }}>
+          <ToolbarButton icon={Video} background="#4E5058" round />
+          <ToolbarButton icon={MonitorUp} background="#4E5058" round />
+          <ToolbarButton icon={Smile} background="#4E5058" round />
+          <ToolbarButton icon={Mic} background="#4E5058" round />
+          <span className="flex items-center justify-center rounded-full" style={{ background: '#F23F43', width: '5.6cqh', height: '5.6cqh' }}>
+            <PhoneOff style={iconSize} />
+          </span>
         </div>
       )}
     </div>

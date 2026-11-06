@@ -212,3 +212,58 @@ int main(int argc, char **argv) {
     return 0;
 }
 `
+
+/** Gray level 0 (black) to 255 (white) as `#RRGGBB`. */
+export function grayHex(level: number): string {
+  const value = clampChannel(level)
+  return toHex([value, value, value])
+}
+
+export interface TimerState {
+  running: boolean
+  /** `performance.now()`/`Date.now()` value when the current run started. */
+  startedAt: number
+  /** Time banked from earlier runs. */
+  accumulatedMs: number
+}
+
+export const STOPPED_TIMER: TimerState = { running: false, startedAt: 0, accumulatedMs: 0 }
+
+export function timerElapsed(state: TimerState, now: number): number {
+  return state.accumulatedMs + (state.running ? Math.max(0, now - state.startedAt) : 0)
+}
+
+export function startTimer(state: TimerState, now: number): TimerState {
+  return state.running ? state : { ...state, running: true, startedAt: now }
+}
+
+export function pauseTimer(state: TimerState, now: number): TimerState {
+  return state.running ? { running: false, startedAt: 0, accumulatedMs: timerElapsed(state, now) } : state
+}
+
+export function countdownRemaining(totalMs: number, state: TimerState, now: number): number {
+  return Math.max(0, totalMs - timerElapsed(state, now))
+}
+
+export function durationFromParts(hours: number, minutes: number, seconds: number): number {
+  const safe = (value: number) => (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0)
+  return (safe(hours) * 3600 + safe(minutes) * 60 + safe(seconds)) * 1000
+}
+
+/** `H:MM:SS` (hours only when needed), with optional hundredths for stopwatches. */
+export function formatTimer(ms: number, withHundredths = false): string {
+  const safe = Math.max(0, ms)
+  const totalSeconds = withHundredths ? Math.floor(safe / 1000) : Math.ceil(safe / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const base = hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`
+  return withHundredths ? `${base}.${pad(Math.floor((safe % 1000) / 10))}` : base
+}
+
+export const PRANK_CRACK_IMAGES = [
+  { id: 'crack01', label: 'Crack 1', src: '/prank/crack01.png' },
+  { id: 'crack02', label: 'Crack 2', src: '/prank/crack02.png' },
+  { id: 'crack03', label: 'Crack 3', src: '/prank/crack03.png' },
+] as const
