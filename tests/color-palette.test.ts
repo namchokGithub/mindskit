@@ -26,10 +26,14 @@ test('uses a label on the same line before the color', () => {
 })
 
 test('extracts HEX colors without # and normalizes them for copying', () => {
-  assert.deepEqual(extractColorsFromText('Primary Pearl Gold\nD5C49A\n\nAccent: abc'), [
+  assert.deepEqual(extractColorsFromText('Primary Pearl Gold\nD5C49A\n\nAccent: abcdef'), [
     { name: 'Primary Pearl Gold', hex: '#D5C49A' },
-    { name: 'Accent', hex: '#ABC' },
+    { name: 'Accent', hex: '#ABCDEF' },
   ])
+})
+
+test('does not treat short words made of HEX letters as colors without #', () => {
+  assert.deepEqual(extractColorsFromText('Please add more contrast, the bad abc fad bed look\nAccent: abc'), [])
 })
 
 test('ignores list markers before a color and uses the label above instead', () => {

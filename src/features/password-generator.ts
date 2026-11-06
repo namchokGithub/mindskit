@@ -102,7 +102,8 @@ function generateRandom(options: PasswordOptions) {
 
 function generateMemorable(options: PasswordOptions) {
   const count = clampPasswordLength('memorable', options.length)
-  const excluded = getExcludedCharacters(options)
+  // Words are readable, so look-alike characters are not a problem; only explicitly excluded characters apply.
+  const excluded = getExcludedCharacters(options, false)
   const capitalize = (word: string) => options.uppercase ? `${word[0].toUpperCase()}${word.slice(1)}` : word
   const available = WORDS.map(capitalize).filter((word) => ![...word].some((character) => excluded.has(character)))
   if (available.length < count) {

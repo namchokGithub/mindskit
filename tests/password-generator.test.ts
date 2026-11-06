@@ -36,11 +36,12 @@ test('random mode de-duplicates the alphabet by code point before computing entr
   assert.equal(overlapping.entropy, Math.log2(26) * 8)
 })
 
-test('memorable mode respects excluded and ambiguous characters', () => {
-  for (let index = 0; index < 50; index += 1) {
-    const value = generatePassword({ ...defaults, mode: 'memorable', length: 4 }).value
-    assert.doesNotMatch(value, /[O0oIl1|`'"]/)
+test('memorable mode respects excluded characters and ignores the ambiguous option', () => {
+  const words = new Set<string>()
+  for (let index = 0; index < 200; index += 1) {
+    for (const word of generatePassword({ ...defaults, mode: 'memorable', length: 4, numbers: false }).value.split('-')) words.add(word.toLowerCase())
   }
+  assert.ok([...words].some((word) => /[ol]/.test(word)), 'words with o or l stay available when ambiguous exclusion is on')
   const value = generatePassword({ ...defaults, mode: 'memorable', length: 3, excludedCharacters: 'e', excludeAmbiguous: false, numbers: false }).value
   assert.doesNotMatch(value, /e/)
   assert.throws(() => generatePassword({ ...defaults, mode: 'memorable', length: 3, excludedCharacters: 'aeiou' }), /words? remain after exclusions/)
