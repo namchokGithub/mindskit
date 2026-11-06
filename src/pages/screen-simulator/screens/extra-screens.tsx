@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { countdownRemaining, formatTimer, timerElapsed, type TimerState } from '@/features/screen-simulator/screen'
 import { cn } from '@/lib/utils'
 
+import { FlipDisplay } from './flip-display'
+
 /** Re-renders on every animation frame while `active`, for smooth timer digits. */
 function useFrameNow(active: boolean): number {
   const [now, setNow] = useState(() => performance.now())
@@ -133,7 +135,7 @@ export function CountdownScreen({ totalMs, state }: { totalMs: number; state: Ti
   const done = totalMs > 0 && remaining === 0
   return (
     <div className={cn('absolute inset-0 flex flex-col items-center justify-center bg-black text-white', done && 'animate-pulse motion-reduce:animate-none')}>
-      <p className="font-bold tabular-nums" style={{ fontSize: '24cqh', lineHeight: 1 }}>{formatTimer(remaining)}</p>
+      <FlipDisplay value={formatTimer(remaining)} fontSize="min(12cqw, 30cqh)" />
       <p className={cn('mt-[4cqh] uppercase tracking-[0.3em]', done ? 'text-[#FF453A]' : 'text-white/50')} style={{ fontSize: '3.4cqh' }}>
         {done ? "Time's up" : state.running ? 'Counting down' : timerElapsed(state, now) > 0 ? 'Paused' : 'Ready'}
       </p>
@@ -143,9 +145,14 @@ export function CountdownScreen({ totalMs, state }: { totalMs: number; state: Ti
 
 export function StopwatchScreen({ state, laps }: { state: TimerState; laps: number[] }) {
   const now = useFrameNow(state.running)
+  const [whole, hundredths = '00'] = formatTimer(timerElapsed(state, now), true).split('.')
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white">
-      <p className="font-bold tabular-nums" style={{ fontSize: '20cqh', lineHeight: 1 }}>{formatTimer(timerElapsed(state, now), true)}</p>
+      {/* Cards flip once per second; hundredths change too fast to flip, so they are plain text. */}
+      <div className="flex items-end gap-[1.5cqw]">
+        <FlipDisplay value={whole} fontSize="min(12cqw, 30cqh)" />
+        <span className="pb-[2cqh] font-light tabular-nums text-[#CCCCCC]" style={{ fontSize: '8cqh', lineHeight: 1 }}>.{hundredths}</span>
+      </div>
       {laps.length > 0 && (
         <ol className="mt-[4cqh] grid grid-cols-2 gap-x-[6cqw] gap-y-[0.8cqh] tabular-nums text-white/70" style={{ fontSize: '2.4cqh' }}>
           {laps.slice(-8).map((lap, index, visible) => (

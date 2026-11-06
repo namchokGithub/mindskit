@@ -4,6 +4,8 @@ import { QUOTES, formatClock } from '@/features/screen-simulator/screen'
 
 import { useDisplayedSize, useNow } from '../stage'
 
+import { FlipDisplay } from './flip-display'
+
 const DVD_COLORS = ['#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#007AFF', '#AF52DE', '#FF2D55']
 
 /** A "DVD" logo-style label that bounces off the edges and changes color on every hit. */
@@ -64,24 +66,14 @@ export function DvdScreen() {
   )
 }
 
-function FlipCard({ value }: { value: string }) {
-  return (
-    <div className="relative flex items-center justify-center overflow-hidden rounded-[2cqh] bg-[#1C1C1E] font-bold tabular-nums text-[#EDEDED] shadow-[0_1cqh_3cqh_rgba(0,0,0,0.6)]" style={{ width: '30cqh', height: '36cqh', fontSize: '26cqh', lineHeight: 1 }}>
-      <span key={value} className="animate-in fade-in slide-in-from-top-4 duration-300 motion-reduce:animate-none">{value}</span>
-      <span className="absolute inset-x-0 top-1/2 h-[0.5cqh] -translate-y-1/2 bg-black" />
-    </div>
-  )
-}
-
 export function FlipClockScreen({ hour12, showSeconds }: { hour12: boolean; showSeconds: boolean }) {
   const now = useNow(1000)
   const time = formatClock(now, hour12)
+  const value = showSeconds ? `${time.hours}:${time.minutes}:${time.seconds}` : `${time.hours}:${time.minutes}`
   return (
-    <div className="absolute inset-0 flex items-center justify-center gap-[3cqh] bg-black">
-      <FlipCard value={time.hours} />
-      <FlipCard value={time.minutes} />
-      {showSeconds && <FlipCard value={time.seconds} />}
-      {time.period && <span className="self-end pb-[4cqh] font-semibold text-[#EDEDED]" style={{ fontSize: '5cqh' }}>{time.period}</span>}
+    <div className="absolute inset-0 flex items-center justify-center gap-[2cqw] bg-black">
+      <FlipDisplay value={value} fontSize={showSeconds ? 'min(10.5cqw, 30cqh)' : 'min(16cqw, 36cqh)'} />
+      {time.period && <span className="self-center font-light text-[#CCCCCC] uppercase" style={{ fontSize: '6cqh' }}>{time.period}</span>}
     </div>
   )
 }
