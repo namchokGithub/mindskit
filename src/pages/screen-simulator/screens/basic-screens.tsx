@@ -94,7 +94,14 @@ export function BsodScreen({ variant, mode, durationSeconds, fixedPercent }: { v
       </p>
       <p className="mt-[4cqh]" style={{ fontSize: '3.6cqh' }}>{percent}% complete</p>
       <div className="mt-[4cqh] flex items-start gap-[2cqw] text-white" style={{ color: background }}>
-        <FakeQr />
+        {variant === 'win10' ? (
+          // Screen blend turns the PNG's black modules into the screen blue and keeps white white, like a real stop screen.
+          <span className="shrink-0" style={{ background, width: '15cqh', height: '15cqh' }}>
+            <img src="/prank/mindskit-qr-code.png" alt="" draggable={false} className="block h-full w-full max-w-none mix-blend-screen" />
+          </span>
+        ) : (
+          <FakeQr />
+        )}
         <div className="text-white" style={{ fontSize: '1.7cqh', lineHeight: 1.5 }}>
           <p>For more information about this issue and possible fixes, visit https://www.windows.com/stopcode</p>
           <p className="mt-[2cqh]">If you call a support person, give them this info:</p>
