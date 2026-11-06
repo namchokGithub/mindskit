@@ -155,8 +155,9 @@ function createSlugger(): (value: string) => string {
  * meant for a section that does render. Duplicate slugs get `-1`, `-2`, ...
  * suffixes counted across all rendered headings, as on GitHub: the H1
  * title, the `## Table of Contents` heading when it renders, and every
- * rendered section heading including Overview. Headings written inside
- * section bodies are not counted.
+ * rendered section heading including Overview, and every ATX heading
+ * (`#` … `######`) written inside a rendered section body (outside fenced
+ * code), in document order.
  */
 export function createTocEntries(document: ReadmeDocument): TocEntry[] {
   const renderedSections = document.sections.filter(
@@ -172,8 +173,33 @@ export function createTocEntries(document: ReadmeDocument): TocEntry[] {
     const title = getSectionHeading(section)
     const href = `#${slug(title)}`
     if (section.kind !== 'overview') entries.push({ title, href })
+    for (const heading of bodyHeadings(section.body)) slug(heading)
   }
   return entries
+}
+
+/**
+ * ATX heading texts written in a section body, skipping fenced code blocks.
+ * Links and images keep only their text, as in the rendered heading GitHub
+ * slugs; other inline markup is removed by `slugify`.
+ */
+export function bodyHeadings(body: string): string[] {
+  const headings: string[] = []
+  let fence: string | null = null
+  for (const line of body.split(/\r?\n/)) {
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})/.exec(line)
+    if (fence) {
+      if (fenceMatch && fenceMatch[1][0] === fence[0] && fenceMatch[1].length >= fence.length && line.trim() === fenceMatch[1]) fence = null
+      continue
+    }
+    if (fenceMatch) {
+      fence = fenceMatch[1]
+      continue
+    }
+    const heading = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(line)
+    if (heading && heading[1].trim() !== '') headings.push(heading[1].replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1'))
+  }
+  return headings
 }
 
 /**

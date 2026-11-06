@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { SectionKind } from '../src/features/readme-builder/model.ts'
 import { addSection, createDocument, duplicateSection, moveSection, pushHistory, updateSection, validateDocument } from '../src/features/readme-builder/model.ts'
-import { createBadgeUrl, createTocEntries, importReadme, renderBadgeMarkup, renderReadme } from '../src/features/readme-builder/markdown.ts'
+import { bodyHeadings, createBadgeUrl, createTocEntries, importReadme, renderBadgeMarkup, renderReadme } from '../src/features/readme-builder/markdown.ts'
 import { createDraftsAdapter, createMemoryDraftStorage } from '../src/features/readme-builder/drafts.ts'
 import { mergeAppliedMarkdown } from '../src/features/readme-builder/apply-markdown.ts'
 
@@ -373,4 +373,22 @@ test('Live Demo URL round-trips through import and Apply Markdown', () => {
   assert.equal(importedLiveDemo.body, 'Try the hosted build.')
   assert.ok(!validateDocument(merged).some((issue) => issue.sectionId === importedLiveDemo.id))
   assert.equal(renderReadme(merged), markdown)
+})
+
+test('TOC numbering counts headings written inside section bodies, like GitHub', () => {
+  let doc = createDocument('blank')
+  doc = addSection(doc, 'custom')
+  doc = updateSection(doc, doc.sections[0].id, { fields: { customTitle: 'Installation' }, body: '### Usage\n\nRun it.\n\n```md\n# Usage\n```' })
+  doc = addSection(doc, 'custom')
+  doc = updateSection(doc, doc.sections[1].id, { fields: { customTitle: 'Usage' }, body: 'Details.' })
+  assert.deepEqual(createTocEntries(doc).map((entry) => entry.href), ['#installation', '#usage-1'])
+  assert.deepEqual(bodyHeadings('## [Docs](https://x.dev) ##\n~~~\n## Hidden\n~~~\n####### not a heading'), ['Docs'])
+})
+
+test('Apply Markdown reads a single underscore in an edited badge as a space', () => {
+  const current = { ...createDocument('blank'), badges: [] }
+  const markdown = '# Title\n\n![x](https://img.shields.io/badge/build_status-my__lib-green)\n\n## Overview\n\nText.'
+  const merged = mergeAppliedMarkdown(current, importReadme(markdown).document)
+  assert.equal(merged.badges[0].label, 'build status')
+  assert.equal(merged.badges[0].message, 'my_lib')
 })

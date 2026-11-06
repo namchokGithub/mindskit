@@ -50,8 +50,9 @@ function splitBadgePath(path: string): string[] {
 }
 
 /** Decode one badge path segment, turning Shields' `__` escape back into a literal `_`. */
+// Shields reads a single `_` as a space and `__` as a literal underscore.
 function decodeBadgeSegment(value: string): string {
-  return decodeComponent(value.replace(/__/g, '_'))
+  return decodeComponent(value.replace(/__|_/g, (match) => (match === '__' ? '_' : ' ')))
 }
 
 /**
