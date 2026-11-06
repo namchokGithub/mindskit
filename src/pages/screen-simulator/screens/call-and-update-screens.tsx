@@ -202,7 +202,8 @@ function IndeterminateBar({ color, track, width = '30cqw' }: { color: string; tr
 export function UpdateScreen({ variant, mode, durationSeconds, fixedPercent }: { variant: UpdateVariant; mode: ProgressMode; durationSeconds: number; fixedPercent: number }) {
   const elapsed = useElapsed(500, `${variant}-${mode}-${durationSeconds}`)
   const percent = progressPercent(mode, elapsed, durationSeconds, fixedPercent)
-  const segoe = { fontFamily: '"Segoe UI", system-ui, sans-serif' }
+  // Windows update screens use a light weight of Segoe UI.
+  const segoe = { fontFamily: '"Segoe UI Light", "Segoe UI", system-ui, sans-serif', fontWeight: 300 }
 
   switch (variant) {
     case 'win10':
