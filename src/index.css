@@ -47,6 +47,17 @@
   animation: mk-shuffle 300ms ease-out 1;
 }
 
+/* Screen Simulator: moving bars for fake update and boot screens. */
+@keyframes mk-indeterminate {
+  from { left: -35%; }
+  to { left: 100%; }
+}
+
+@keyframes mk-xp-boot {
+  from { left: -30%; }
+  to { left: 105%; }
+}
+
 .sidebar-tool-active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 13%, transparent), color-mix(in srgb, var(--brand-secondary) 8%, transparent));
   box-shadow: inset 3px 0 0 var(--primary), 0 8px 18px -16px var(--primary);

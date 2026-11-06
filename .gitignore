@@ -27,8 +27,8 @@ dist-ssr
 *.sw?
 
 # Issue reports
-*/.note.md
-.note
+*/note.md
+note
 docs/issues
 
 # Fetched at build time by scripts/fetch-bg-removal-assets.mjs — not committed (~180MB binary)

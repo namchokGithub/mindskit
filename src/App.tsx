@@ -34,6 +34,9 @@ const ImageRemoveBackgroundPage = lazy(() =>
 const ReadmeBuilderPage = lazy(() =>
   import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
 )
+const ScreenSimulatorPage = lazy(() =>
+  import('@/pages/screen-simulator/screen-simulator-page').then((module) => ({ default: module.ScreenSimulatorPage })),
+)
 const ScreenshotBeautifierPage = lazy(() =>
   import('@/pages/screenshot-beautifier-page').then((module) => ({ default: module.ScreenshotBeautifierPage })),
 )
@@ -125,6 +128,14 @@ export default function App() {
             element={
               <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
                 <ScreenshotBeautifierPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/screen-simulator"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <ScreenSimulatorPage />
               </Suspense>
             }
           />

@@ -1,5 +1,6 @@
 import {
   AlignLeft,
+  MonitorPlay,
   AppWindow,
   Barcode,
   Binary,
@@ -47,6 +48,7 @@ export const categories: CategoryDefinition[] = [
   { id: "generators", name: "Generators" },
   { id: "converters", name: "Converters" },
   { id: "images", name: "Images" },
+  { id: "screen", name: "Screen Simulator" },
 ];
 
 export const tools: ToolDefinition[] = [
@@ -425,7 +427,6 @@ export const tools: ToolDefinition[] = [
     category: "converters",
     path: "/converters/color",
     icon: Palette,
-    isNew: true,
   },
   {
     id: "date-formatter",
@@ -457,7 +458,8 @@ export const tools: ToolDefinition[] = [
   {
     id: "image-crop",
     name: "Image Crop",
-    description: "Crop, rotate, flip, and resize PNG, JPG, and WebP images in your browser.",
+    description:
+      "Crop, rotate, flip, and resize PNG, JPG, and WebP images in your browser.",
     category: "images",
     path: "/images/crop",
     icon: Crop,
@@ -483,10 +485,23 @@ export const tools: ToolDefinition[] = [
   {
     id: "favicon-generator",
     name: "Favicon Generator",
-    description: "Create a favicon.ico with 16, 32, and 48 px icons from an image in your browser.",
+    description:
+      "Create a favicon.ico with 16, 32, and 48 px icons from an image in your browser.",
     category: "images",
     path: "/images/favicon-generator",
     icon: AppWindow,
+  },
+
+  // Screen Simulator
+  {
+    id: "screen-simulator",
+    name: "Screen Simulator",
+    description:
+      "Full-screen colors, lighting, prank screens, screensavers, and white noise in your browser.",
+    category: "screen",
+    path: "/screen-simulator",
+    icon: MonitorPlay,
+    isNew: true,
   },
 ];
 
