@@ -130,6 +130,7 @@ test('builds Matrix characters from the selected languages', async () => {
   const { MATRIX_CHARSETS, matrixCharacters } = await import('../src/features/screen-simulator/screen.ts')
   const mixed = matrixCharacters(['en', 'pt'])
   assert.ok(mixed.includes('A') && mixed.includes('Ç') && mixed.includes('7'))
+  assert.ok(matrixCharacters(['ru']).includes('Ж'))
   assert.equal(mixed.filter((character) => character === 'A').length, 1, 'shared Latin letters appear once')
   assert.deepEqual(matrixCharacters([]), matrixCharacters(['ja']))
   assert.ok(matrixCharacters(['th']).every((character) => !/[ัิ-ฺ็-๎]/.test(character)), 'no Thai combining marks')

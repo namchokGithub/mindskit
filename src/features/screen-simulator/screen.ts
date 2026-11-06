@@ -268,7 +268,7 @@ export const PRANK_CRACK_IMAGES = [
   { id: 'crack03', label: 'Crack 3', src: '/prank/crack03.png' },
 ] as const
 
-export type MatrixLanguage = 'en' | 'th' | 'zh' | 'ja' | 'ko' | 'pt'
+export type MatrixLanguage = 'en' | 'th' | 'zh' | 'ja' | 'ko' | 'pt' | 'ru'
 
 /**
  * Character pools for the Matrix rain. Thai uses consonants only (no combining vowels or tone marks, which cannot
@@ -281,6 +281,7 @@ export const MATRIX_CHARSETS: Record<MatrixLanguage, { label: string; characters
   ja: { label: '日本語', characters: 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンあいうえおかきくけこ' },
   ko: { label: '한국어', characters: '가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추' },
   pt: { label: 'Português', characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZÁÂÃÀÇÉÊÍÓÔÕÚ' },
+  ru: { label: 'Русский', characters: 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' },
 }
 
 export const MATRIX_DIGITS = '0123456789'
