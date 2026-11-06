@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { countdownRemaining, formatTimer, timerElapsed, type TimerState } from '@/features/screen-simulator/screen'
 import { cn } from '@/lib/utils'
 
-import { FlipDisplay } from './flip-display'
+import { FlipDisplay, type FlipAppearance } from './flip-display'
 
 /** Re-renders on every animation frame while `active`, for smooth timer digits. */
 function useFrameNow(active: boolean): number {
@@ -129,34 +129,31 @@ export function BrokenScreen({ src }: { src: string }) {
   return <img src={src} alt="" draggable={false} className="absolute inset-0 h-full w-full max-w-none object-cover select-none" />
 }
 
-export function CountdownScreen({ totalMs, state }: { totalMs: number; state: TimerState }) {
+export function CountdownScreen({ totalMs, state, appearance }: { totalMs: number; state: TimerState; appearance: FlipAppearance }) {
   const now = useFrameNow(state.running)
   const remaining = countdownRemaining(totalMs, state, now)
   const done = totalMs > 0 && remaining === 0
   return (
-    <div className={cn('absolute inset-0 flex flex-col items-center justify-center bg-black text-white', done && 'animate-pulse motion-reduce:animate-none')}>
-      <FlipDisplay value={formatTimer(remaining)} fontSize="min(12cqw, 30cqh)" />
-      <p className={cn('mt-[4cqh] uppercase tracking-[0.3em]', done ? 'text-[#FF453A]' : 'text-white/50')} style={{ fontSize: '3.4cqh' }}>
+    <div className={cn('absolute inset-0 flex flex-col items-center justify-center', appearance === 'light' ? 'bg-white text-[#1C1C1E]' : 'bg-black text-white', done && 'animate-pulse motion-reduce:animate-none')}>
+      <FlipDisplay value={formatTimer(remaining)} appearance={appearance} fontSize="min(12cqw, 30cqh)" />
+      <p className={cn('mt-[4cqh] uppercase tracking-[0.3em]', done ? 'text-[#FF453A]' : 'opacity-50')} style={{ fontSize: '3.4cqh' }}>
         {done ? "Time's up" : state.running ? 'Counting down' : timerElapsed(state, now) > 0 ? 'Paused' : 'Ready'}
       </p>
     </div>
   )
 }
 
-export function StopwatchScreen({ state, laps }: { state: TimerState; laps: number[] }) {
+export function StopwatchScreen({ state, laps, appearance }: { state: TimerState; laps: number[]; appearance: FlipAppearance }) {
   const now = useFrameNow(state.running)
-  const [whole, hundredths = '00'] = formatTimer(timerElapsed(state, now), true).split('.')
+  // Whole seconds only; formatTimer's hundredths mode floors (a stopwatch must not round up).
+  const whole = formatTimer(timerElapsed(state, now), true).split('.')[0]
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white">
-      {/* Cards flip once per second; hundredths change too fast to flip, so they are plain text. */}
-      <div className="flex items-end gap-[1.5cqw]">
-        <FlipDisplay value={whole} fontSize="min(12cqw, 30cqh)" />
-        <span className="pb-[2cqh] font-light tabular-nums text-[#CCCCCC]" style={{ fontSize: '8cqh', lineHeight: 1 }}>.{hundredths}</span>
-      </div>
+    <div className={cn('absolute inset-0 flex flex-col items-center justify-center', appearance === 'light' ? 'bg-white text-[#1C1C1E]' : 'bg-black text-white')}>
+      <FlipDisplay value={whole} appearance={appearance} fontSize="min(12cqw, 30cqh)" />
       {laps.length > 0 && (
-        <ol className="mt-[4cqh] grid grid-cols-2 gap-x-[6cqw] gap-y-[0.8cqh] tabular-nums text-white/70" style={{ fontSize: '2.4cqh' }}>
+        <ol className="mt-[4cqh] grid grid-cols-2 gap-x-[6cqw] gap-y-[0.8cqh] tabular-nums opacity-70" style={{ fontSize: '2.4cqh' }}>
           {laps.slice(-8).map((lap, index, visible) => (
-            <li key={`${index}-${lap}`}>Lap {laps.length - visible.length + index + 1}: {formatTimer(lap, true)}</li>
+            <li key={`${index}-${lap}`}>Lap {laps.length - visible.length + index + 1}: {formatTimer(lap, true).split('.')[0]}</li>
           ))}
         </ol>
       )}

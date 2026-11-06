@@ -38,6 +38,7 @@ import { UpdateScreen, VideoCallScreen, type CallStyle, type SelfAvatar, type Up
 import { BrokenScreen, CountdownScreen, HackerSimulatorScreen, QrScreen, StopwatchScreen } from './screens/extra-screens'
 import { NoiseScreen } from './screens/noise-screen'
 import { DvdScreen, FlipClockScreen, MatrixScreen, NoSignalScreen, QuotesScreen } from './screens/screensaver-screens'
+import { type FlipAppearance } from './screens/flip-display'
 import { ScreenStage } from './stage'
 
 const TABS = [
@@ -247,6 +248,7 @@ export function ScreenSimulatorPage() {
 
   // Screensaver
   const [hour12, setHour12] = useState(false)
+  const [flipAppearance, setFlipAppearance] = useState<FlipAppearance>('dark')
   const [showSeconds, setShowSeconds] = useState(true)
   const [quoteLanguage, setQuoteLanguage] = useState<'en' | 'th'>('en')
   const [quoteInterval, setQuoteInterval] = useState(10)
@@ -298,12 +300,12 @@ export function ScreenSimulatorPage() {
     else screen = <UpdateScreen variant={updateVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
   } else if (tab === 'screensaver') {
     if (mode === 'dvd') screen = <DvdScreen />
-    else if (mode === 'clock') screen = <FlipClockScreen hour12={hour12} showSeconds={showSeconds} />
+    else if (mode === 'clock') screen = <FlipClockScreen hour12={hour12} showSeconds={showSeconds} appearance={flipAppearance} />
     else if (mode === 'quotes') screen = <QuotesScreen language={quoteLanguage} intervalSeconds={quoteInterval} />
     else if (mode === 'no-signal') screen = <NoSignalScreen />
     else if (mode === 'matrix') screen = <MatrixScreen fontSize={matrixSize} speedMs={matrixSpeed} />
-    else if (mode === 'countdown') screen = <CountdownScreen totalMs={countdownTotal} state={countdownState} />
-    else if (mode === 'stopwatch') screen = <StopwatchScreen state={stopwatchState} laps={laps} />
+    else if (mode === 'countdown') screen = <CountdownScreen totalMs={countdownTotal} state={countdownState} appearance={flipAppearance} />
+    else if (mode === 'stopwatch') screen = <StopwatchScreen state={stopwatchState} laps={laps} appearance={flipAppearance} />
     else screen = <QrScreen content={qrContent} description={qrDescription} dark={qrDark} />
   } else {
     screen = <NoiseScreen color={noiseColor} playing={playing} remainingSeconds={remainingSeconds} />
@@ -506,6 +508,10 @@ export function ScreenSimulatorPage() {
               </Field>
               {updateVariant !== 'xp-boot' && <ProgressControls mode={progressMode} setMode={setProgressMode} duration={duration} setDuration={setDuration} percent={fixedPercent} setPercent={setFixedPercent} />}
             </>
+          )}
+
+          {tab === 'screensaver' && (mode === 'clock' || mode === 'countdown' || mode === 'stopwatch') && (
+            <Segmented label="Flip card theme" value={flipAppearance} options={[{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }] as const} onChange={setFlipAppearance} />
           )}
 
           {tab === 'screensaver' && mode === 'clock' && (
