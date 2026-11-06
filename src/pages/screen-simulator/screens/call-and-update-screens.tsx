@@ -46,7 +46,7 @@ export interface SelfAvatar {
   photoUrl: string | null
 }
 
-export function VideoCallScreen({ style, selfName, members, selfAvatar }: { style: CallStyle; selfName: string; members: string[]; selfAvatar?: SelfAvatar }) {
+export function VideoCallScreen({ style, selfName, members, selfAvatar, meetingName = '' }: { style: CallStyle; selfName: string; members: string[]; selfAvatar?: SelfAvatar; meetingName?: string }) {
   const elapsed = useElapsed(1000, style)
   const now = useNow(10_000)
   const participants = [...members, `${selfName.trim() || 'You'} (You)`]
@@ -115,7 +115,7 @@ export function VideoCallScreen({ style, selfName, members, selfAvatar }: { styl
 
       {style === 'meet' && (
         <div className="flex items-center justify-between px-[2cqw]" style={{ height: '10cqh', fontSize: '1.9cqh' }}>
-          <span className="tabular-nums text-white/90">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} | abc-defg-hij</span>
+          <span className="tabular-nums text-white/90">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} | {meetingName.trim() || 'abc-defg-hij'}</span>
           <div className="flex items-center gap-[1cqw]">
             {[Mic, Video, Captions, Smile, MonitorUp, Hand, MoreHorizontal].map((Icon, index) => <ToolbarButton key={index} icon={Icon} background="#3C4043" round />)}
             <span className="flex items-center justify-center rounded-full" style={{ background: '#EA4335', width: '8cqh', height: '5.6cqh' }}>

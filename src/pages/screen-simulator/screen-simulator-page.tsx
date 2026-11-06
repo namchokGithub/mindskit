@@ -173,6 +173,7 @@ export function ScreenSimulatorPage() {
   const [membersText, setMembersText] = useState(() => randomMemberNames(5).join('\n'))
   const members = parseMemberNames(membersText)
   const [updateVariant, setUpdateVariant] = useState<UpdateVariant>('win10')
+  const [meetingName, setMeetingName] = useState('')
   const [avatarMode, setAvatarMode] = useState<'auto' | 'color' | 'photo'>('auto')
   const [avatarColor, setAvatarColor] = useState('#7B83EB')
   const [avatarPhotoUrl, setAvatarPhotoUrl] = useState<string | null>(null)
@@ -290,7 +291,7 @@ export function ScreenSimulatorPage() {
     else if (mode === 'hacker-sim') screen = <HackerSimulatorScreen speed={hackerSimSpeed} />
     else if (mode === 'broken') screen = <BrokenScreen src={crack.src} />
     else if (mode === 'bsod') screen = <BsodScreen variant={bsodVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
-    else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} selfAvatar={selfAvatar} />
+    else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} selfAvatar={selfAvatar} meetingName={meetingName} />
     else screen = <UpdateScreen variant={updateVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
   } else if (tab === 'screensaver') {
     if (mode === 'dvd') screen = <DvdScreen />
@@ -459,6 +460,11 @@ export function ScreenSimulatorPage() {
           {tab === 'pranks' && mode === 'call' && (
             <>
               <Segmented label="Call style" value={callStyle} options={CALL_STYLES} onChange={setCallStyle} />
+              {callStyle === 'meet' && (
+                <Field label="Meeting name">
+                  <input value={meetingName} onChange={(event) => setMeetingName(event.target.value)} placeholder="abc-defg-hij" maxLength={60} className={fieldClass} />
+                </Field>
+              )}
               <Field label="Your name"><input value={selfName} onChange={(event) => setSelfName(event.target.value)} className={fieldClass} /></Field>
               <div className="flex flex-col gap-2">
                 <span className="text-xs text-muted-foreground">Your profile</span>
