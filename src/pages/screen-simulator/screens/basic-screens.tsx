@@ -44,26 +44,6 @@ export function HackerTypingScreen({ code, charsPerTick, loop }: { code: string;
   )
 }
 
-/** A static pseudo-QR block made of deterministic squares (not a real code). */
-function FakeQr() {
-  const cells = Array.from({ length: 21 * 21 }, (_, index) => {
-    const x = index % 21
-    const y = Math.floor(index / 21)
-    const finder = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13)
-    if (finder) {
-      const fx = x > 13 ? x - 14 : x
-      const fy = y > 13 ? y - 14 : y
-      return fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx >= 2 && fx <= 4 && fy >= 2 && fy <= 4)
-    }
-    return ((x * 7 + y * 13 + x * y) % 5) < 2
-  })
-  return (
-    <div className="grid shrink-0 bg-white p-[0.6cqh]" style={{ gridTemplateColumns: 'repeat(21, 1fr)', width: '15cqh', height: '15cqh' }}>
-      {cells.map((filled, index) => <span key={index} className={filled ? 'bg-current' : ''} />)}
-    </div>
-  )
-}
-
 export type BsodVariant = 'win10' | 'win11' | 'xp'
 
 export function BsodScreen({ variant, mode, durationSeconds, fixedPercent }: { variant: BsodVariant; mode: ProgressMode; durationSeconds: number; fixedPercent: number }) {
@@ -94,14 +74,10 @@ export function BsodScreen({ variant, mode, durationSeconds, fixedPercent }: { v
       </p>
       <p className="mt-[4cqh]" style={{ fontSize: '3.6cqh' }}>{percent}% complete</p>
       <div className="mt-[4cqh] flex items-start gap-[2cqw] text-white" style={{ color: background }}>
-        {variant === 'win10' ? (
-          // Screen blend turns the PNG's black modules into the screen blue and keeps white white, like a real stop screen.
-          <span className="shrink-0" style={{ background, width: '15cqh', height: '15cqh' }}>
-            <img src="/prank/mindskit-qr-code.png" alt="" draggable={false} className="block h-full w-full max-w-none mix-blend-screen" />
-          </span>
-        ) : (
-          <FakeQr />
-        )}
+        {/* Screen blend turns the PNG's black modules into the screen blue and keeps white white, like a real stop screen. */}
+        <span className="shrink-0" style={{ background, width: '15cqh', height: '15cqh' }}>
+          <img src="/prank/mindskit-qr-code.png" alt="" draggable={false} className="block h-full w-full max-w-none mix-blend-screen" />
+        </span>
         <div className="text-white" style={{ fontSize: '1.7cqh', lineHeight: 1.5 }}>
           <p>For more information about this issue and possible fixes, visit https://www.windows.com/stopcode</p>
           <p className="mt-[2cqh]">If you call a support person, give them this info:</p>
