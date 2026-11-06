@@ -58,6 +58,40 @@
   to { left: 105%; }
 }
 
+/* Range input whose track shows an inline background gradient (Screen Simulator gray and lighting). */
+.mk-gradient-range {
+  height: 0.75rem;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+}
+.mk-gradient-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--background);
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--ring), 0 1px 3px rgb(0 0 0 / 0.35);
+}
+.mk-gradient-range::-moz-range-thumb {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--background);
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--ring), 0 1px 3px rgb(0 0 0 / 0.35);
+}
+.mk-gradient-range::-moz-range-track {
+  background: transparent;
+}
+.mk-gradient-range:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .sidebar-tool-active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 13%, transparent), color-mix(in srgb, var(--brand-secondary) 8%, transparent));
   box-shadow: inset 3px 0 0 var(--primary), 0 8px 18px -16px var(--primary);

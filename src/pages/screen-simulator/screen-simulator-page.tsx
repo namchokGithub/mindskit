@@ -62,6 +62,9 @@ const UPDATE_VARIANTS: { id: UpdateVariant; label: string }[] = [
   { id: 'android', label: 'Android' },
 ]
 
+// Every 250 K sampled from the same conversion the screen uses, so the slider shows the exact displayed colors.
+const KELVIN_GRADIENT = `linear-gradient(90deg, ${Array.from({ length: (MAX_KELVIN - MIN_KELVIN) / 250 + 1 }, (_, index) => kelvinToHex(MIN_KELVIN + index * 250)).join(', ')})`
+
 const fieldClass = 'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 aria-invalid:border-destructive'
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: readonly { id: T; label: string }[]; onChange: (value: T) => void }) {
@@ -358,7 +361,7 @@ export function ScreenSimulatorPage() {
 
           {tab === 'colors' && mode === 'gray' && (
             <Field label={`Gray level: ${grayLevel} · ${grayHex(grayLevel)}`}>
-              <input type="range" min={0} max={255} value={grayLevel} onChange={(event) => setGrayLevel(Number(event.target.value))} aria-label="Gray level from black to white" className="h-2 cursor-pointer appearance-none rounded-full accent-primary" style={{ background: 'linear-gradient(90deg, #000000, #FFFFFF)' }} />
+              <input type="range" min={0} max={255} value={grayLevel} onChange={(event) => setGrayLevel(Number(event.target.value))} aria-label="Gray level from black to white" className="mk-gradient-range" style={{ background: 'linear-gradient(90deg, #000000, #FFFFFF)' }} />
               <span className="flex justify-between text-[0.7rem]"><span>Black</span><span>White</span></span>
             </Field>
           )}
@@ -433,7 +436,7 @@ export function ScreenSimulatorPage() {
 
           {tab === 'colors' && mode === 'lighting' && (
             <Field label={`Color temperature: ${kelvin} K`}>
-              <input type="range" min={MIN_KELVIN} max={MAX_KELVIN} step={50} value={kelvin} onChange={(event) => setKelvin(Number(event.target.value))} className="accent-primary" style={{ background: `linear-gradient(90deg, ${kelvinToHex(MIN_KELVIN)}, ${kelvinToHex(6500)}, ${kelvinToHex(MAX_KELVIN)})` }} aria-label="Color temperature in kelvin" />
+              <input type="range" min={MIN_KELVIN} max={MAX_KELVIN} step={50} value={kelvin} onChange={(event) => setKelvin(Number(event.target.value))} className="mk-gradient-range" style={{ background: KELVIN_GRADIENT }} aria-label="Color temperature in kelvin" />
               <span className="flex justify-between text-[0.7rem]"><span>Warm</span><span className="font-mono">{kelvinToHex(kelvin)}</span><span>Cool</span></span>
             </Field>
           )}
