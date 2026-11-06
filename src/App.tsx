@@ -21,7 +21,7 @@ import { RomanNumeralDatePage } from '@/pages/roman-numeral-date-page'
 import { StrongPasswordGeneratorPage } from '@/pages/strong-password-generator-page'
 import { JsonValidatorPage } from '@/pages/json-validator-page'
 import { JwtDecoderPage } from '@/pages/jwt-decoder-page'
-import { BarcodePage, QrCodePage } from '@/pages/code-generators-pages'
+import { BarcodePage } from '@/pages/code-generators-pages'
 import { JsonToCsvPage, JsonToYamlPage } from '@/pages/json-converters-pages'
 import { JsonDataGeneratorPage } from '@/pages/json-data-generator-page'
 import { FaviconGeneratorPage } from '@/pages/favicon-generator-page'
@@ -30,6 +30,9 @@ import { ImageResizePage } from '@/pages/image-resize-page'
 
 const ImageRemoveBackgroundPage = lazy(() =>
   import('@/pages/image-remove-background-page').then((module) => ({ default: module.ImageRemoveBackgroundPage })),
+)
+const QrCodePage = lazy(() =>
+  import('@/pages/qr-code-page').then((module) => ({ default: module.QrCodePage })),
 )
 const ReadmeBuilderPage = lazy(() =>
   import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
@@ -97,7 +100,7 @@ export default function App() {
           <Route path="/encode-decode/html" element={<HtmlEncodeDecodePage />} />
           <Route path="/encode-decode/jwt" element={<JwtDecoderPage />} />
           <Route path="/generators/uuid" element={<UuidPage />} />
-          <Route path="/generators/qr-code" element={<QrCodePage />} />
+          <Route path="/generators/qr-code" element={<Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}><QrCodePage /></Suspense>} />
           <Route path="/generators/barcode" element={<BarcodePage />} />
           <Route path="/generators/random-string" element={<RandomStringPage />} />
           <Route path="/generators/strong-password" element={<StrongPasswordGeneratorPage />} />

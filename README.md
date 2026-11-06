@@ -58,7 +58,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - UUID v4, generated in batches of 1, 5, 10, or a custom amount up to 200
 - Random String, with configurable count, length, character sets, uniqueness, prefix/suffix, and separators
 - Strong Password Generator with cryptographically secure Random, Memorable, and PIN modes; strength/entropy feedback; character exclusions; and no local password storage
-- QR Code generator, with size/error-correction options and PNG download
+- QR Code generator with frames, body and eye shapes, Simple Icons or uploaded logos, error-correction levels, size/color controls, live preview, and PNG download
 - Barcode generator (Code 128, Code 39, EAN-13, EAN-8, and UPC-A), with SVG download
 
 ### Converters

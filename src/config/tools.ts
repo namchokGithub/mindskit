@@ -323,7 +323,7 @@ export const tools: ToolDefinition[] = [
   {
     id: "qr-code",
     name: "QR Code",
-    description: "Generate a QR code from text or a URL.",
+    description: "Generate and customize a QR code with frames, shapes, and logos.",
     category: "generators",
     path: "/generators/qr-code",
     icon: QrCode,
