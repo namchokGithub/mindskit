@@ -1,7 +1,7 @@
 <h1>
   MindsKit
   <img
-    src="src/assets/mindskit-logo2.png"
+    src="public/glossy-purple-slime-tool-buddy.png"
     alt="Logo"
     width="48"
     height="48"
@@ -20,9 +20,9 @@ MindsKit is a focused collection of tools for formatting data, transforming text
 
 ### Formatters
 
-- JSON Formatter, Minifier, and Validator
+- JSON Formatter, Minifier, and Validator, with a warning when numbers are too large or too precise for JavaScript and may change
 - JSON Data Generator for schema-based fictional records, with copy/download and transfer to SQL INSERT
-- XML Formatter, Minifier, and Validator
+- XML Formatter, Minifier, and Validator (also as WSDL and SOAP formatters) that keep text content, `xml:space="preserve"`, the DOCTYPE, comments, and processing instructions
 
 ### SQL
 
@@ -41,10 +41,10 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 
 - Remove Spaces
 - Make One Line, with a custom separator
-- Text Decoration: case transforms plus prefix and suffix wrapping
-- Markdown: bold and italic transforms with a rendered Markdown preview
+- Text Decoration: case transforms (camelCase, PascalCase, snake_case, kebab-case split on word, case, acronym, and digit boundaries; Title Case keeps punctuation and line breaks) plus prefix and suffix wrapping
+- Markdown: line-by-line bold and italic transforms that skip code blocks, horizontal rules, and tables, with a rendered GitHub-flavored Markdown preview
 - Split Text and Join Text
-- README Builder: compose a structured README from templates and a section library, with a GitHub-style preview, Markdown import/export, and local-only drafts (browser storage, not sent anywhere)
+- README Builder: compose a structured README from templates and a section library, with a GitHub-flavored preview, GitHub-compatible table-of-contents anchors, Shields.io badges, Markdown import/export, and local-only drafts (browser storage, not sent anywhere)
 
 ### Encode / Decode
 
@@ -63,14 +63,14 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 
 ### Converters
 
-- Unix Timestamp ↔ ISO date/time, with browser-local timezone by default and searchable timezone selection
+- Unix Timestamp ↔ ISO date/time for second or millisecond timestamps, with browser-local timezone by default and searchable timezone selection
 - JSON → YAML, with copy and YAML-file download
 - JSON → CSV for arrays of objects, with copy and CSV-file download
 - JSON → Go Struct and JSON → TypeScript type generation
-- JSON ↔ XML conversion
-- Number Base Converter for binary, octal, decimal, and hexadecimal values
+- JSON ↔ XML conversion; XML → JSON keeps attributes as `@attributes` and leaf text as `#text`
+- Number Base Converter for signed binary, octal, decimal, and hexadecimal values
 - Letters ↔ Numbers for A1Z26, reverse alphabet, printable ASCII, and Roman numeral mappings
-- Color Converter for HEX (with or without `#`), RGB, and HSL formats, plus a palette builder that extracts named 3- or 6-digit HEX colors with or without `#` from pasted text and lets you add, edit, and copy up to 20 colors
+- Color Converter for HEX (with or without `#`), RGB, and HSL formats, plus a palette builder that extracts named `#RGB` / `#RRGGBB` colors and 6-digit codes without `#` from pasted text (common words such as add or facade are ignored) and lets you add, edit, reorder by dragging, and copy up to 20 colors
 - Date Formatter for common date-time formats and time zones
 - Roman Numeral Date Converter for Gregorian `YYYY-MM-DD` / `DD/MM/YYYY` dates and `DD/MM/YYYY` Roman numeral dates
 
@@ -78,10 +78,18 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 
 - Image Resize & Convert for PNG, JPEG, and WebP: export one uploaded image at multiple pixel or percentage sizes, or convert it between formats, processed sequentially in the browser, with an individual download for every result. New images reset resize settings; entering pixel mode starts at the original image size, and Keep aspect ratio derives height from width
 - Favicon Generator: create a `favicon.ico` containing 16, 32, and 48 px icons from a PNG, JPEG, or WebP image
-- Screen Simulator: full-screen solid colors (presets, picker, HEX/RGB), a black-to-white gray slider, and color-temperature lighting (1500–8500 K); prank screens (hacker typing, a movie-style hacker dashboard, broken screen, blue screens, fake Teams/Meet/Zoom/Discord calls, fake system updates) with a clear prank notice; screensavers (bouncing DVD, flip clock, quotes, no signal, Matrix rain, countdown, stopwatch with laps, and an on-screen QR code with a caption); and white/pink/brown noise. Previews from 480p to 8K, full screen with Screen Wake Lock
-- Image Crop with freeform and preset aspect ratios, exact crop size in pixels, output-size presets (social, screen/video, avatar/icon, print) or a custom output size, 90° rotation, horizontal/vertical flips, free straightening up to ±45°, a rule-of-thirds grid, a live preview, and a full-size preview dialog
-- Remove Background using an in-browser AI model
+- Image Crop with freeform and preset aspect ratios, exact crop size in pixels, output-size presets (social, screen/video, avatar/icon, print) or a custom output size, 90° rotation (the crop turns with the image), screen-oriented horizontal/vertical flips, free straightening up to ±45°, a rule-of-thirds grid, a live preview, and a full-size preview dialog; PNG/JPEG/WebP and similar up to 20 MiB and 10,000 px per side
+- Remove Background using an in-browser AI model, for PNG, JPEG, or WebP up to 20 MiB and 10,000 px per side
 - Screenshot Beautifier: compose a PNG/JPEG/WebP screenshot with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then export PNG/JPG at up to 2x resolution or copy the result to the clipboard
+
+### Screen Simulator
+
+One tool with tabs and a preview from 480p to 8K; full screen keeps the display awake (Screen Wake Lock) and hides an idle cursor.
+
+- Colors: solid colors (presets, picker, HEX/RGB input), a black-to-white gray slider, and color-temperature lighting from 1500 K to 8500 K
+- Screen Pranks, with a clear on-page prank notice: hacker typing with your own code, a movie-style hacker dashboard, broken screen, Windows 10/11/XP blue screens, fake Teams/Meet/Zoom/Discord calls (your name and members, a custom Meet name, and your own avatar color or a photo that stays in the browser), and fake system updates with timed or fixed progress
+- Screensavers: bouncing DVD, flip clock, countdown, and stopwatch with laps (FlipClock.js cards in light or dark themes), quotes in English or Thai, no signal, Matrix rain mixing English, Thai, Chinese, Japanese, Korean, Portuguese, and Russian characters, and an on-screen QR code with a caption
+- White Noise: white, pink, or brown noise with volume, a stop timer, and animated TV static
 
 ## Themes
 
@@ -94,7 +102,7 @@ The shared app shell layers the transparent [background artwork](src/assets/bg.p
 
 ## Privacy
 
-All processing happens in the browser. Pasted text and generated values are not sent to a server or third-party API. Saving input locally is optional and off by default; generated passwords are never saved locally.
+All processing happens in the browser. Pasted text and generated values are not sent to a server or third-party API; the only external request is README Builder's badge preview, which loads badge images from img.shields.io. Saving input locally is optional and off by default; generated passwords are never saved locally.
 
 ## Tech stack
 
@@ -107,6 +115,10 @@ All processing happens in the browser. Pasted text and generated values are not 
 - [sql-formatter](https://github.com/sql-formatter-org/sql-formatter) for dialect-aware SQL formatting
 - [react-markdown](https://github.com/remarkjs/react-markdown) for Markdown previews
 - [qrcode](https://github.com/soldair/node-qrcode), [JsBarcode](https://github.com/lindell/JsBarcode), and [yaml](https://github.com/eemeli/yaml) for client-side generators and conversions
+- [remark-gfm](https://github.com/remarkjs/remark-gfm) for GitHub-flavored Markdown previews
+- [Motion](https://motion.dev/), [AutoAnimate](https://auto-animate.formkit.com/), and [dnd kit](https://dndkit.com/) for animations and drag-to-reorder
+- [FlipClock.js](https://flipclockjs.com/) for Screen Simulator flip cards
+- [linkedom](https://github.com/WebReflection/linkedom) as a test-only `DOMParser` for XML tests in Node
 
 ## Getting started
 
@@ -131,7 +143,7 @@ The development server opens at [http://localhost:5173](http://localhost:5173).
 ```bash
 pnpm lint
 pnpm build
-pnpm test:sql # SQL and JSON generator regression tests; requires Node.js 22.18+ or 24+
+pnpm test:sql # Node test runner for tests/*.test.ts (SQL, converters, text, image, README, palette, and more); requires Node.js 22.18+ or 24+
 ```
 
 ### Deployment
