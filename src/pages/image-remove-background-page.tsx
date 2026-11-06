@@ -5,6 +5,7 @@ import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
 import { removeImageBackground } from '@/features/images/remove-background'
+import { MAX_IMAGE_DIMENSION, validateImageForResize } from '@/features/images/resize'
 import { cn } from '@/lib/utils'
 
 function download(href: string, filename: string) {
@@ -53,8 +54,10 @@ export function ImageRemoveBackgroundPage() {
   }, [])
 
   const handleFile = (nextFile: File) => {
-    if (!nextFile.type.startsWith('image/')) {
-      setError('Please choose an image file.')
+    // Same limits as Image Resize: the background-removal model only reads PNG, JPEG, and WebP reliably.
+    const validationError = validateImageForResize(nextFile)
+    if (validationError) {
+      setError(validationError)
       return
     }
     if (imageSrc) URL.revokeObjectURL(imageSrc)
@@ -115,7 +118,7 @@ export function ImageRemoveBackgroundPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(event) => {
             const nextFile = event.target.files?.[0]
@@ -158,14 +161,29 @@ export function ImageRemoveBackgroundPage() {
           >
             <ImagePlus className="size-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Drag and drop an image here, or click to browse.</p>
-            <p className="text-xs text-muted-foreground/80">PNG, JPG, WebP, and more</p>
+            <p className="text-xs text-muted-foreground/80">PNG, JPEG, or WebP · up to 20 MiB · 10,000 px per side</p>
           </div>
         ) : (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="flex min-h-0 flex-col gap-2">
               <span className="text-sm font-medium text-muted-foreground">Original</span>
               <div className="flex min-h-70 flex-1 items-center justify-center overflow-auto rounded-lg border border-border bg-muted/30 p-3">
-                <img src={imageSrc} alt="Original" className="max-h-full max-w-full object-contain" />
+                <img
+                  src={imageSrc}
+                  alt="Original"
+                  className="max-h-full max-w-full object-contain"
+                  onLoad={(event) => {
+                    const image = event.currentTarget
+                    if (image.naturalWidth > MAX_IMAGE_DIMENSION || image.naturalHeight > MAX_IMAGE_DIMENSION) {
+                      setFile(null)
+                      setError(`Images must be ${MAX_IMAGE_DIMENSION.toLocaleString()} px or smaller on each side.`)
+                    }
+                  }}
+                  onError={() => {
+                    setFile(null)
+                    setError('Could not read this image file.')
+                  }}
+                />
               </div>
             </div>
             <div className="flex min-h-0 flex-col gap-2">

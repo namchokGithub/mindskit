@@ -73,28 +73,28 @@ export function TextTransformPage(config: TextTransformPageConfig) {
 
   const handleOptionChange = (next: string) => {
     setOption(next)
-    if (hasRun) run(input, next)
+    if (hasRun) confirm(input, () => run(input, next))
   }
 
   const handlePrefixChange = (value: string) => {
     setPrefix(value)
-    if (hasRun) apply(input, option, value, suffix, timeZone)
+    if (hasRun) confirm(input, () => apply(input, option, value, suffix, timeZone))
   }
 
   const handleSuffixChange = (value: string) => {
     setSuffix(value)
-    if (hasRun) apply(input, option, prefix, value, timeZone)
+    if (hasRun) confirm(input, () => apply(input, option, prefix, value, timeZone))
   }
 
   const handleTimeZoneChange = (value: string) => {
     setTimeZone(value)
-    if (hasRun) apply(input, option, prefix, suffix, value)
+    if (hasRun) confirm(input, () => apply(input, option, prefix, suffix, value))
   }
 
   const handleSample = () => {
     const sample = config.samples?.[option] ?? config.sample
     setInput(sample)
-    run(sample)
+    confirm(sample, () => run(sample))
   }
 
   const handleClear = () => {

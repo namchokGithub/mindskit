@@ -57,13 +57,13 @@ export function FormatterPage(config: FormatterPageConfig) {
 
   const handleIndentChange = (next: IndentOption) => {
     setIndent(next);
-    if (result?.ok) run(input, next);
+    if (result?.ok) confirm(input, () => run(input, next));
   };
 
   const handleSample = () => {
     const sample = config.sample();
     setInput(sample);
-    run(sample, indent);
+    confirm(sample, () => run(sample, indent));
   };
 
   const handleClear = () => {

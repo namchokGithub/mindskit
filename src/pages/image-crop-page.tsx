@@ -350,6 +350,7 @@ export function ImageCropPage() {
     }
   }
 
+  // The editor is capped at 70% of the viewport height (see its width style) so tall images keep their lower handles on screen.
   const ready = Boolean(cropRect && naturalSize && bounding && safeRect)
 
   return (
@@ -413,7 +414,7 @@ export function ImageCropPage() {
             <div
               ref={wrapperRef}
               className="relative mx-auto w-full max-w-2xl touch-none overflow-hidden rounded-lg bg-black/5 select-none"
-              style={bounding ? { aspectRatio: `${bounding.width} / ${bounding.height}` } : undefined}
+              style={bounding ? { aspectRatio: `${bounding.width} / ${bounding.height}`, width: `min(100%, calc(70vh * ${bounding.width / bounding.height}))` } : undefined}
             >
               <img
                 ref={imgRef}
