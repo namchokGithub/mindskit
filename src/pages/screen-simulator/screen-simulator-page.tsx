@@ -1,4 +1,4 @@
-import { Flag, Pause, Play, RotateCcw, Shuffle, TriangleAlert } from 'lucide-react'
+import { Flag, ImagePlus, Pause, Play, RotateCcw, ShieldCheck, Shuffle, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -34,7 +34,7 @@ import {
 import { cn } from '@/lib/utils'
 
 import { BsodScreen, ColorScreen, HackerTypingScreen, type BsodVariant } from './screens/basic-screens'
-import { UpdateScreen, VideoCallScreen, type CallStyle, type UpdateVariant } from './screens/call-and-update-screens'
+import { UpdateScreen, VideoCallScreen, type CallStyle, type SelfAvatar, type UpdateVariant } from './screens/call-and-update-screens'
 import { BrokenScreen, CountdownScreen, HackerSimulatorScreen, QrScreen, StopwatchScreen } from './screens/extra-screens'
 import { NoiseScreen } from './screens/noise-screen'
 import { DvdScreen, FlipClockScreen, MatrixScreen, NoSignalScreen, QuotesScreen } from './screens/screensaver-screens'
@@ -173,6 +173,39 @@ export function ScreenSimulatorPage() {
   const [membersText, setMembersText] = useState(() => randomMemberNames(5).join('\n'))
   const members = parseMemberNames(membersText)
   const [updateVariant, setUpdateVariant] = useState<UpdateVariant>('win10')
+  const [avatarMode, setAvatarMode] = useState<'auto' | 'color' | 'photo'>('auto')
+  const [avatarColor, setAvatarColor] = useState('#7B83EB')
+  const [avatarPhotoUrl, setAvatarPhotoUrl] = useState<string | null>(null)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const avatarPhotoRef = useRef<string | null>(null)
+  const selfAvatar: SelfAvatar = {
+    color: avatarMode === 'color' ? avatarColor : null,
+    photoUrl: avatarMode === 'photo' ? avatarPhotoUrl : null,
+  }
+
+  // The photo stays an in-memory object URL in this tab; it is never uploaded or stored.
+  const replaceAvatarPhoto = (url: string | null) => {
+    if (avatarPhotoRef.current) URL.revokeObjectURL(avatarPhotoRef.current)
+    avatarPhotoRef.current = url
+    setAvatarPhotoUrl(url)
+  }
+  useEffect(() => () => {
+    if (avatarPhotoRef.current) URL.revokeObjectURL(avatarPhotoRef.current)
+  }, [])
+  const handleAvatarFile = (file: File) => {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      setAvatarError('Choose a PNG, JPEG, WebP, or GIF image.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('Images must be 10 MiB or smaller.')
+      return
+    }
+    setAvatarError('')
+    replaceAvatarPhoto(URL.createObjectURL(file))
+    setAvatarMode('photo')
+  }
 
   const [grayLevel, setGrayLevel] = useState(128)
   const [hackerSimSpeed, setHackerSimSpeed] = useState(1)
@@ -257,7 +290,7 @@ export function ScreenSimulatorPage() {
     else if (mode === 'hacker-sim') screen = <HackerSimulatorScreen speed={hackerSimSpeed} />
     else if (mode === 'broken') screen = <BrokenScreen src={crack.src} />
     else if (mode === 'bsod') screen = <BsodScreen variant={bsodVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
-    else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} />
+    else if (mode === 'call') screen = <VideoCallScreen style={callStyle} selfName={selfName} members={members} selfAvatar={selfAvatar} />
     else screen = <UpdateScreen variant={updateVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
   } else if (tab === 'screensaver') {
     if (mode === 'dvd') screen = <DvdScreen />
@@ -427,6 +460,26 @@ export function ScreenSimulatorPage() {
             <>
               <Segmented label="Call style" value={callStyle} options={CALL_STYLES} onChange={setCallStyle} />
               <Field label="Your name"><input value={selfName} onChange={(event) => setSelfName(event.target.value)} className={fieldClass} /></Field>
+              <div className="flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">Your profile</span>
+                <Segmented label="Your profile picture" value={avatarMode} options={[{ id: 'auto', label: 'Auto' }, { id: 'color', label: 'Color' }, { id: 'photo', label: 'Photo' }] as const} onChange={(value) => { setAvatarMode(value); if (value === 'photo' && !avatarPhotoUrl) avatarInputRef.current?.click() }} />
+                {avatarMode === 'color' && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input type="color" value={avatarColor.toLowerCase()} onChange={(event) => setAvatarColor(event.target.value.toUpperCase())} aria-label="Your profile color" className="h-8 w-10 cursor-pointer rounded-lg border border-input bg-transparent p-0.5" />
+                    <span className="font-mono">{avatarColor}</span>
+                  </label>
+                )}
+                {avatarMode === 'photo' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {avatarPhotoUrl && <img src={avatarPhotoUrl} alt="Your profile" className="size-10 rounded-full object-cover" />}
+                    <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}><ImagePlus />{avatarPhotoUrl ? 'Change photo' : 'Upload photo'}</Button>
+                    {avatarPhotoUrl && <Button type="button" variant="ghost" size="sm" onClick={() => { replaceAvatarPhoto(null); setAvatarMode('auto') }}><X />Remove</Button>}
+                  </div>
+                )}
+                <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) handleAvatarFile(file); event.target.value = '' }} />
+                {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" />Your photo stays in this browser tab only. It is not uploaded or saved anywhere and is gone when you close or reload the page.</p>
+              </div>
               <Field label={`Members (one per line, max ${MAX_CALL_MEMBERS}) · ${members.length}/${MAX_CALL_MEMBERS}`}>
                 <Textarea value={membersText} onChange={(event) => setMembersText(event.target.value)} className="min-h-32 text-sm field-sizing-fixed" />
               </Field>

@@ -39,7 +39,14 @@ function ToolbarButton({ icon: Icon, label, background, color, round }: { icon: 
   )
 }
 
-export function VideoCallScreen({ style, selfName, members }: { style: CallStyle; selfName: string; members: string[] }) {
+export interface SelfAvatar {
+  /** Avatar circle color; null uses the automatic color. */
+  color: string | null
+  /** Object URL of a photo kept only in this browser; null shows initials. */
+  photoUrl: string | null
+}
+
+export function VideoCallScreen({ style, selfName, members, selfAvatar }: { style: CallStyle; selfName: string; members: string[]; selfAvatar?: SelfAvatar }) {
   const elapsed = useElapsed(1000, style)
   const now = useNow(10_000)
   const participants = [...members, `${selfName.trim() || 'You'} (You)`]
@@ -84,6 +91,9 @@ export function VideoCallScreen({ style, selfName, members }: { style: CallStyle
         {participants.map((name, index) => {
           const display = name.replace(/ \(You\)$/, '')
           const muted = index % 3 === 1
+          const isSelf = index === participants.length - 1
+          const photoUrl = isSelf ? selfAvatar?.photoUrl : null
+          const avatarColor = (isSelf && selfAvatar?.color) || colorFor(display)
           const speaking = style !== 'teams' && index === 0
           return (
             <div
@@ -91,8 +101,8 @@ export function VideoCallScreen({ style, selfName, members }: { style: CallStyle
               className="relative flex min-h-0 items-center justify-center overflow-hidden"
               style={{ background: theme.tile, borderRadius: theme.radius, boxShadow: speaking ? `inset 0 0 0 0.4cqh ${style === 'zoom' ? '#23D959' : style === 'discord' ? '#23A55A' : '#8AB4F8'}` : undefined }}
             >
-              <div className="flex items-center justify-center rounded-full font-semibold" style={{ background: colorFor(display), width: avatarSize, height: avatarSize, fontSize: `${Math.min(6.5, 12 / rows)}cqh` }}>
-                {avatarInitials(display)}
+              <div className="flex items-center justify-center overflow-hidden rounded-full font-semibold" style={{ background: avatarColor, width: avatarSize, height: avatarSize, fontSize: `${Math.min(6.5, 12 / rows)}cqh` }}>
+                {photoUrl ? <img src={photoUrl} alt="" draggable={false} className="h-full w-full max-w-none object-cover" /> : avatarInitials(display)}
               </div>
               <span className="absolute bottom-[1cqh] left-[1cqh] flex items-center gap-[0.5cqw] rounded px-[0.6cqw] py-[0.3cqh]" style={{ fontSize: '1.7cqh', background: theme.nameBackground }}>
                 {muted && <MicOff style={{ width: '1.8cqh', height: '1.8cqh' }} className={style === 'zoom' || style === 'discord' ? 'text-[#F23F43]' : undefined} />}
