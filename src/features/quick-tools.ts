@@ -67,7 +67,8 @@ function formatTimestampForTimeZone(date: Date, timeZone?: string): string {
     timeZoneName: 'longOffset',
   }).formatToParts(date)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const offset = values.timeZoneName === 'GMT' ? 'Z' : values.timeZoneName.replace('GMT', '')
+  // Engines differ for a zero offset ('GMT' in browsers, 'GMT+00:00' in Node/ICU builds); both mean UTC.
+  const offset = /^GMT(?:[+-]00:?00)?$/.test(values.timeZoneName) ? 'Z' : values.timeZoneName.replace('GMT', '')
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}.${String(date.getMilliseconds()).padStart(3, '0')}${offset}`
 }
 
