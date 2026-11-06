@@ -94,3 +94,15 @@ test('re-fits a crop to a new ratio without collapsing it', () => {
   assert.ok(Math.abs(restored.width / restored.height - 2) < 1e-9)
   assert.ok(Math.abs(restored.x + restored.width / 2 - 500) < 1e-9)
 })
+
+test('resizes a locked-ratio crop from a vertical-only corner drag', () => {
+  const bounds = { width: 1000, height: 1000 }
+  const start = { x: 100, y: 100, width: 200, height: 200 }
+  assert.deepEqual(resizeCropRect('se', start, 0, 100, 1, bounds), { x: 100, y: 100, width: 300, height: 300 })
+  assert.deepEqual(resizeCropRect('nw', { x: 300, y: 300, width: 200, height: 200 }, 0, -50, 1, bounds), { x: 250, y: 250, width: 250, height: 250 })
+  // A horizontal-only drag still drives the size, including shrinking.
+  assert.deepEqual(resizeCropRect('se', start, -100, 0, 1, bounds), { x: 100, y: 100, width: 100, height: 100 })
+  // A vertical drag past the edge is still limited by the room on both axes.
+  const wide = resizeCropRect('se', { x: 700, y: 100, width: 200, height: 100 }, 0, 5000, 2, bounds)
+  assert.deepEqual(wide, { x: 700, y: 100, width: 300, height: 150 })
+})

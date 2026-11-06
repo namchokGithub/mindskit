@@ -8,7 +8,7 @@ Last checked against source: 2026-09-06.
 - **Goal:** A lightweight, expandable developer toolbox that runs in the browser.
 - Keep tools simple and focused; process pasted content locally without sending it to a server or third-party API.
 - Static SPA only: no backend, database, authentication service, Firebase, or Cloudflare Workers.
-- Treat the source code as the authority for implemented behavior. `README.md` and historical plans in `docs/plan/` may lag behind it; for example, the README still describes JWT as decoding-only.
+- Treat the source code as the authority for implemented behavior. `README.md` and historical plans in `docs/plan/` may lag behind it.
 
 ## Tech Stack
 
@@ -39,6 +39,8 @@ Last checked against source: 2026-09-06.
 - Other shared pieces include `CopyButton`, `IndentSelect`, `ToolStatus`, `ToolPageHeader`, and `TextStats`.
 - `useLargeInputConfirmation` and `LargeInputDialog` request confirmation before running an action on input larger than 5 MiB by default. This applies only where the hook is used, is configurable, and is not a universal hard input limit or background-processing mechanism.
 
+- Shared behavior notes: the large-input confirmation is a Radix `Dialog` (focus trap, Escape/outside click cancel, focus return); `CodeEditor` labels the CodeMirror content element via `EditorView.contentAttributes`; the theme hook tolerates blocked `localStorage`; `useCopy` clears its reset timer on repeat copies and unmount; the sidebar opens the first category by default; each XML route has its own React `key` so inputs and Remember-input keys do not leak between XML pages; image tools revoke their object URLs on unmount and attach download links to the DOM before clicking.
+
 ## Current Scope
 
 There are 51 registered tools in eight categories. Exact paths and metadata live in `src/config/tools.ts`; implemented route bindings live in `src/App.tsx`.
@@ -58,7 +60,7 @@ There are 51 registered tools in eight categories. Exact paths and metadata live
 - JSON routes retain `/formatters/...`; XML tools use both `/formatters/xml` and `/xml/...`. Category IDs do not necessarily match URL prefixes.
 - XML Minify, WSDL Formatter, and SOAP Formatter reuse `XmlFormatterPage` with distinct metadata/storage keys. WSDL/SOAP validation is XML syntax validation, not schema or protocol validation.
 - JWT supports header/payload inspection, expiry status, and optional HMAC signature verification, plus creation of signed tokens using HS256/HS384/HS512. Decoding alone does not verify authenticity. Implementation lives in `src/features/jwt.ts` and `src/pages/jwt-decoder-page.tsx`.
-- Strong Password Generator supports Random, Memorable, and PIN modes, with cryptographically secure randomness and strength/entropy feedback.
+- Strong Password Generator supports Random, Memorable, and PIN modes, with cryptographically secure randomness and strength/entropy feedback. Character sets are de-duplicated by code point before generating and computing entropy; the length is clamped to each mode's range when switching modes; PIN ignores the ambiguous-character exclusion (all digits 0–9 unless digits are excluded explicitly); Memorable drops words containing excluded or ambiguous characters and errors clearly when too few remain (with ambiguous exclusion on by default, the word list shrinks accordingly).
 - QR codes have a dedicated page and browser-only canvas renderer with frame, body/eye shape, color, Simple Icons and in-memory uploaded logo, error-correction, size, and PNG download options; barcodes support SVG download. JSON → YAML/CSV supports output downloads. Markdown includes a rendered preview.
 - JSON tools parse with `JSON.parse`, so numbers beyond `Number.MAX_SAFE_INTEGER` or with more than 15 significant digits can change. `JsonPrecisionWarning` (`src/features/formatters/json-precision.ts`) scans the raw input and warns on Formatter, Minifier, Validator, Sorter, Compare, JSON → YAML/CSV, JSON → Go/TypeScript, JSON → XML, and SQL INSERT (JSON input).
 - JSON Data Generator (`/json/generator`) builds flat JSON object arrays from a local field schema: UUID, running ID, fictional name/email, boolean, integer, decimal, date/time, text, or enum. It supports nullable and unique fields, 1–1000 records, indentation, copy/download, and a one-time `sessionStorage` transfer to SQL INSERT. Generated values use Web Crypto; no generated data is sent to a server.
@@ -75,6 +77,9 @@ There are 51 registered tools in eight categories. Exact paths and metadata live
 - Screenshot Beautifier (`/images/screenshot-beautifier`) composes a loaded PNG/JPEG/WebP screenshot (up to 20 MiB, 10,000 px per side) with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then exports PNG/JPG at up to 2x pixel density (capped at 4096 px per edge) via `html-to-image`, or copies the PNG to the clipboard. The screenshot and export never leave the browser; only the last-used canvas preset, gradient preset, and frame persist, and only when Remember input is enabled, under the existing `mindskit:input:<key>` mechanism.
 - Parameters Preview accepts JSON arrays for `?`/`$1` and JSON objects for `:name`, skips placeholders inside SQL strings, quoted identifiers, and comments, and exists only for local debugging; it must not be presented as safe substitution for query execution. CREATE TABLE → Types handles one CREATE TABLE statement and common scalar columns; it does not model all dialect-specific DDL. Syntax Checker uses `sql-formatter` parsing for the selected dialect and cannot validate database schema, permissions, or extensions.
 - Additional routes: home `/`, privacy `/privacy`, and license `/license`.
+
+- Converter edge cases: Unix Timestamp → Date reads 13-digit input as milliseconds and rejects blank input; HTML encode escapes `&`, `<`, `>`, `"`, and `'`; Number Base accepts a `+`/`-` sign on any input and strips only the prefix matching the source base (`0x`/`0o`/`0b`); JSON → CSV escapes header names like values; JSON → TypeScript names a root array item `<Root>Item` when the singular equals the root name; JSON → Go de-duplicates field names per struct and escapes struct tags; XML → JSON keeps leaf attributes as `{"#text": …, "@attributes": {…}}` and uses null-prototype objects so tags like `constructor` are ordinary keys; JSON Compare uses own keys only.
+- SQL Create Table → types maps `INTERVAL` to string, `INT8`/`BIGINT`/`SERIAL8`/`BIGSERIAL` to the bigint rule, and `TINYINT`/`SMALLINT`/`MEDIUMINT`/`INT` to number/int.
 
 ## Persistence and Privacy
 

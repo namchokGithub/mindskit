@@ -33,6 +33,7 @@ export function FaviconGeneratorPage() {
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const previewsRef = useRef<FaviconPreview[]>([])
+  const imageUrlRef = useRef('')
 
   const replacePreviews = (next: FaviconPreview[]) => {
     previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url))
@@ -40,7 +41,14 @@ export function FaviconGeneratorPage() {
     setPreviews(next)
   }
 
-  useEffect(() => () => previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url)), [])
+  useEffect(() => {
+    imageUrlRef.current = imageUrl
+  }, [imageUrl])
+
+  useEffect(() => () => {
+    previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url))
+    if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current)
+  }, [])
 
   const handleFile = (nextFile: File) => {
     const validationError = validateImageForResize(nextFile)

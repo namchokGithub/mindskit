@@ -105,6 +105,21 @@ test('CREATE TABLE generator produces TypeScript and Go types for common scalar 
   assert.throws(() => createTableToTypes('SELECT 1', 'typescript'), /CREATE TABLE/)
 })
 
+test('CREATE TABLE type mapping matches whole SQL type names', () => {
+  const ddl = 'CREATE TABLE t (a INTERVAL, b INT8 NOT NULL, c TINYINT, d MEDIUMINT, e SMALLINT, f INT, g BIGINT, h INTEGER, i FLOAT8, j DOUBLE PRECISION);'
+  const typescript = createTableToTypes(ddl, 'typescript')
+  assert.match(typescript, /a\?: string \| null/)
+  assert.match(typescript, /b: string\n/)
+  for (const column of ['c', 'd', 'e', 'f', 'h', 'i', 'j']) assert.match(typescript, new RegExp(`\\b${column}\\?: number \\| null`))
+  assert.match(typescript, /g\?: string \| null/)
+  const go = createTableToTypes(ddl, 'go')
+  assert.match(go, /A string `json:"a,omitempty"`/)
+  assert.match(go, /B int64 `json:"b"`/)
+  for (const column of ['C', 'D', 'E', 'F', 'H']) assert.match(go, new RegExp(`${column} int \``))
+  assert.match(go, /G int64 `/)
+  assert.match(go, /I float64 `/)
+})
+
 test('syntax checker reports parser results without executing SQL', async () => {
   assert.deepEqual(await validateSqlSyntax('SELECT id FROM users WHERE active = true', 'postgresql'), { valid: true })
   const invalid = await validateSqlSyntax("SELECT 'unfinished", 'postgresql')

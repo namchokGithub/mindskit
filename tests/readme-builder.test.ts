@@ -62,6 +62,20 @@ test('validation does not flag hidden sections with empty required body', () => 
   assert.equal(issues.length, 0)
 })
 
+test('validation reports blank and whitespace-only custom titles once, the same way', () => {
+  for (const customTitle of ['', '   ']) {
+    let document = addSection(createDocument('blank'), 'custom')
+    const sectionId = document.sections[0].id
+    document = updateSection(document, sectionId, { fields: { customTitle }, body: 'Some content.' })
+    const issues = validateDocument(document).filter((issue) => issue.sectionId === sectionId)
+    assert.deepEqual(
+      issues.map((issue) => issue.code),
+      ['blank-custom-title'],
+      `customTitle ${JSON.stringify(customTitle)}`,
+    )
+  }
+})
+
 // --- markdown.ts fixtures ---
 
 function documentWithTwoVisibleSectionsNamed(title: string) {

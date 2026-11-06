@@ -33,7 +33,7 @@ function randomIndex(length: number) {
   return values[0] % length
 }
 
-function randomCharacter(characters: string) {
+function randomCharacter(characters: readonly string[]) {
   return characters[randomIndex(characters.length)]
 }
 
@@ -45,9 +45,28 @@ function shuffle(values: string[]) {
   return values.join('')
 }
 
-function filterCharacters(value: string, options: PasswordOptions) {
-  const excluded = new Set(`${options.excludedCharacters}${options.excludeAmbiguous ? AMBIGUOUS : ''}`)
-  return [...value].filter((character) => !excluded.has(character)).join('')
+/** Splits text into unique characters by code point, preserving first-seen order. */
+function uniqueCharacters(value: string) {
+  return [...new Set(value)]
+}
+
+function getExcludedCharacters(options: PasswordOptions, includeAmbiguous = options.excludeAmbiguous) {
+  return new Set(`${options.excludedCharacters}${includeAmbiguous ? AMBIGUOUS : ''}`)
+}
+
+function filterCharacters(value: string, excluded: ReadonlySet<string>) {
+  return uniqueCharacters(value).filter((character) => !excluded.has(character))
+}
+
+export const passwordLengthRanges: Record<PasswordMode, { min: number; max: number }> = {
+  random: { min: 8, max: 128 },
+  memorable: { min: 3, max: 6 },
+  pin: { min: 4, max: 12 },
+}
+
+export function clampPasswordLength(mode: PasswordMode, length: number) {
+  const { min, max } = passwordLengthRanges[mode]
+  return Math.max(min, Math.min(max, length))
 }
 
 function getScore(entropy: number): PasswordResult['score'] {
@@ -66,38 +85,49 @@ function createResult(value: string, entropy: number): PasswordResult {
 }
 
 function generateRandom(options: PasswordOptions) {
+  const excluded = getExcludedCharacters(options)
   const groups = [
-    options.uppercase ? filterCharacters(UPPERCASE, options) : '',
-    options.lowercase ? filterCharacters(LOWERCASE, options) : '',
-    options.numbers ? filterCharacters(NUMBERS, options) : '',
-    options.symbols ? filterCharacters(options.symbolSet, options) : '',
-  ].filter(Boolean)
+    options.uppercase ? filterCharacters(UPPERCASE, excluded) : [],
+    options.lowercase ? filterCharacters(LOWERCASE, excluded) : [],
+    options.numbers ? filterCharacters(NUMBERS, excluded) : [],
+    options.symbols ? filterCharacters(options.symbolSet, excluded) : [],
+  ].filter((group) => group.length > 0)
   if (!groups.length) throw new Error('Choose at least one character group.')
   if (options.length < groups.length) throw new Error(`Choose a length of at least ${groups.length} to include every selected group.`)
-  const alphabet = groups.join('')
+  const alphabet = uniqueCharacters(groups.flat().join(''))
   const value = groups.map(randomCharacter)
   while (value.length < options.length) value.push(randomCharacter(alphabet))
   return createResult(shuffle(value), Math.log2(alphabet.length) * options.length)
 }
 
 function generateMemorable(options: PasswordOptions) {
-  const count = Math.max(3, Math.min(6, options.length))
+  const count = clampPasswordLength('memorable', options.length)
+  const excluded = getExcludedCharacters(options)
+  const capitalize = (word: string) => options.uppercase ? `${word[0].toUpperCase()}${word.slice(1)}` : word
+  const available = WORDS.map(capitalize).filter((word) => ![...word].some((character) => excluded.has(character)))
+  if (available.length < count) {
+    throw new Error(`Only ${available.length} word${available.length === 1 ? '' : 's'} remain after exclusions; choose ${available.length < 3 ? 'fewer excluded characters' : `at most ${available.length} words`}.`)
+  }
+  const separator = options.symbols ? '-' : ''
+  if (separator && excluded.has(separator)) throw new Error('The hyphen separator is excluded. Allow "-" or turn off symbols.')
+  const digits = filterCharacters(NUMBERS, excluded)
+  const leadingDigits = digits.filter((digit) => digit !== '0')
+  if (options.numbers && !leadingDigits.length) throw new Error('Keep at least one digit from 1 to 9 available for the number suffix.')
   const selected: string[] = []
   while (selected.length < count) {
-    const word = WORDS[randomIndex(WORDS.length)]
+    const word = available[randomIndex(available.length)]
     if (!selected.includes(word)) selected.push(word)
   }
-  const words = selected.map((word) => options.uppercase ? `${word[0].toUpperCase()}${word.slice(1)}` : word)
-  const suffix = options.numbers ? String(randomIndex(900) + 100) : ''
-  const separator = options.symbols ? '-' : ''
-  const value = `${words.join(separator)}${suffix ? `${separator}${suffix}` : ''}`
-  const entropy = Math.log2(WORDS.length) * count + (options.numbers ? Math.log2(900) : 0)
+  const suffix = options.numbers ? `${randomCharacter(leadingDigits)}${randomCharacter(digits)}${randomCharacter(digits)}` : ''
+  const value = `${selected.join(separator)}${suffix ? `${separator}${suffix}` : ''}`
+  const entropy = Math.log2(available.length) * count + (options.numbers ? Math.log2(leadingDigits.length) + Math.log2(digits.length) * 2 : 0)
   return createResult(value, entropy)
 }
 
 function generatePin(options: PasswordOptions) {
-  const length = Math.max(4, Math.min(12, options.length))
-  const digits = filterCharacters(NUMBERS, options)
+  const length = clampPasswordLength('pin', options.length)
+  // PINs always use the full 0-9 range; ambiguous-character exclusion does not apply to digits-only output.
+  const digits = filterCharacters(NUMBERS, getExcludedCharacters(options, false))
   if (digits.length < 2) throw new Error('Keep at least two digits available for a PIN.')
   const value = Array.from({ length }, () => randomCharacter(digits)).join('')
   return createResult(value, Math.log2(digits.length) * length)

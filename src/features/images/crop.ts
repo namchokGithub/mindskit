@@ -74,7 +74,8 @@ export function moveCropRect(startRect: CropRect, deltaX: number, deltaY: number
 
 /**
  * Resizes a rect by dragging one corner, anchored on the opposite corner.
- * If `ratio` is set, height always follows width. Bounded to stay inside the image.
+ * If `ratio` is set, the axis that moved more (relative to the ratio) drives the size, so a corner can be dragged
+ * horizontally or vertically. Bounded to stay inside the image.
  */
 export function resizeCropRect(
   corner: CropCorner,
@@ -96,7 +97,9 @@ export function resizeCropRect(
   let width = Math.min(availableWidth, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'sw' ? anchorX - freeX : freeX - anchorX))
   let height = Math.min(availableHeight, Math.max(MIN_CROP_SIZE, corner === 'nw' || corner === 'ne' ? anchorY - freeY : freeY - anchorY))
   if (ratio) {
-    width = Math.min(width, availableHeight * ratio)
+    const widthFromY = height * ratio
+    width = Math.abs(widthFromY - startRect.width) > Math.abs(width - startRect.width) ? widthFromY : width
+    width = Math.min(width, availableWidth, availableHeight * ratio)
     height = width / ratio
   }
 

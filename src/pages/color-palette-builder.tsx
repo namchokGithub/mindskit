@@ -71,9 +71,11 @@ function PaletteWorkspace({ converter }: { converter: ReactNode }) {
 
   const toItems = (colors: { name: string; hex: string }[]) =>
     colors.map((color) => ({ id: nextId.current++, ...color }));
+  // Blank names fall back to `Color N` (N = card position), matching the label shown on each card.
   const validColors = items
-    .filter((item) => isValidHexColor(item.hex))
-    .map((item) => ({ name: item.name.trim() || "Untitled", hex: normalizeHexColor(item.hex) }));
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isValidHexColor(item.hex))
+    .map(({ item, index }) => ({ name: item.name.trim() || `Color ${index + 1}`, hex: normalizeHexColor(item.hex) }));
   const invalidCount = items.length - validColors.length;
   const isFull = items.length >= MAX_PALETTE_COLORS;
 

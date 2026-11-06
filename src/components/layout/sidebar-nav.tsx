@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { categories, getToolsByCategory, tools } from '@/config/tools'
 import { cn } from '@/lib/utils'
 
-const DEFAULT_OPEN_CATEGORIES = ['formatters']
+const DEFAULT_OPEN_CATEGORIES = categories.slice(0, 1).map((category) => category.id)
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation()

@@ -68,12 +68,12 @@ export default function App() {
           <Route path="/formatters/json-sorter" element={<JsonSorterPage />} />
           <Route path="/formatters/json-compare" element={<JsonComparePage />} />
           <Route path="/json/generator" element={<JsonDataGeneratorPage />} />
-          <Route path="/formatters/xml" element={<XmlFormatterPage />} />
-          <Route path="/xml/minify" element={<XmlFormatterPage title="XML Minify" description="Compact XML and validate it before sharing." storageKey="xml-minifier" />} />
+          <Route path="/formatters/xml" element={<XmlFormatterPage key="xml-formatter" />} />
+          <Route path="/xml/minify" element={<XmlFormatterPage title="XML Minify" description="Compact XML and validate it before sharing." storageKey="xml-minifier" key="xml-minifier" />} />
           <Route path="/xml/viewer" element={<XmlViewerPage />} />
           <Route path="/xml/validator" element={<XmlValidatorPage />} />
-          <Route path="/xml/wsdl-formatter" element={<XmlFormatterPage title="WSDL Formatter" description="Beautify and validate WSDL XML documents." storageKey="wsdl-formatter" />} />
-          <Route path="/xml/soap-formatter" element={<XmlFormatterPage title="SOAP Formatter" description="Beautify and validate SOAP XML messages." storageKey="soap-formatter" />} />
+          <Route path="/xml/wsdl-formatter" element={<XmlFormatterPage title="WSDL Formatter" description="Beautify and validate WSDL XML documents." storageKey="wsdl-formatter" key="wsdl-formatter" />} />
+          <Route path="/xml/soap-formatter" element={<XmlFormatterPage title="SOAP Formatter" description="Beautify and validate SOAP XML messages." storageKey="soap-formatter" key="soap-formatter" />} />
           <Route path="/sql/formatter" element={<SqlFormatterPage />} />
           <Route path="/sql/minify" element={<SqlMinifierPage />} />
           <Route path="/sql/parameters" element={<SqlParametersPage />} />

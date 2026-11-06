@@ -124,18 +124,56 @@ export function exportResizeFileName(originalName: string, size: ImageSize, mime
   return `${base}-${size.width}x${size.height}.${extension}`
 }
 
-export function resizeToBlob(source: CanvasImageSource, size: ImageSize, mimeType: string, quality?: number): Promise<Blob> {
+/**
+ * Intermediate sizes to step through, halving each axis that is still more than 2× its target, so a large reduction
+ * is not drawn in one aliased step. Always ends with the target size.
+ */
+export function resizeSteps(from: ImageSize, to: ImageSize): ImageSize[] {
+  const steps: ImageSize[] = []
+  let current = from
+  while (current.width / 2 > to.width || current.height / 2 > to.height) {
+    current = {
+      width: current.width / 2 > to.width ? Math.round(current.width / 2) : current.width,
+      height: current.height / 2 > to.height ? Math.round(current.height / 2) : current.height,
+    }
+    steps.push(current)
+  }
+  steps.push(to)
+  return steps
+}
+
+function createResizeCanvas(size: ImageSize) {
   const canvas = document.createElement('canvas')
   canvas.width = size.width
   canvas.height = size.height
   const context = canvas.getContext('2d')
-  if (!context) return Promise.reject(new Error('Canvas 2D context is unavailable.'))
+  if (!context) throw new Error('Canvas 2D context is unavailable.')
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = 'high'
+  return { canvas, context }
+}
 
-  if (mimeType === 'image/jpeg') {
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, size.width, size.height)
+export function resizeToBlob(source: CanvasImageSource, sourceSize: ImageSize, size: ImageSize, mimeType: string, quality?: number): Promise<Blob> {
+  let canvas: HTMLCanvasElement
+  try {
+    let current: CanvasImageSource = source
+    const steps = resizeSteps(sourceSize, size)
+    for (const step of steps.slice(0, -1)) {
+      const next = createResizeCanvas(step)
+      next.context.drawImage(current, 0, 0, step.width, step.height)
+      current = next.canvas
+    }
+
+    const output = createResizeCanvas(size)
+    if (mimeType === 'image/jpeg') {
+      output.context.fillStyle = '#ffffff'
+      output.context.fillRect(0, 0, size.width, size.height)
+    }
+    output.context.drawImage(current, 0, 0, size.width, size.height)
+    canvas = output.canvas
+  } catch (error) {
+    return Promise.reject(error)
   }
-  context.drawImage(source, 0, 0, size.width, size.height)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Failed to export the resized image.'))), mimeType, quality)

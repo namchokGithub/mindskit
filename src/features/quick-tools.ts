@@ -39,17 +39,17 @@ export function convertUrl(input: string, operation: string): string {
 }
 
 export function convertHtml(input: string, operation: string): string {
-  const element = document.createElement('textarea')
   if (operation === 'decode') {
+    const element = document.createElement('textarea')
     element.innerHTML = input
     return element.value
   }
-  element.textContent = input
-  return element.innerHTML
+  return input.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;')
 }
 
 export function convertTimestamp(input: string, operation: string, _prefix?: string, _suffix?: string, timeZone = 'browser'): string {
-  const date = operation === 'to-date' ? new Date(Number(input) * 1000) : new Date(input)
+  const trimmed = input.trim()
+  const date = !trimmed ? new Date(Number.NaN) : operation === 'to-date' ? new Date(/^\d{13}$/.test(trimmed) ? Number(trimmed) : Number(trimmed) * 1000) : new Date(trimmed)
   if (Number.isNaN(date.getTime())) return 'Enter a valid timestamp or date.'
   return operation === 'to-date' ? formatTimestampForTimeZone(date, timeZone === 'browser' ? undefined : timeZone) : String(Math.floor(date.getTime() / 1000))
 }

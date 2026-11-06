@@ -1,5 +1,5 @@
 import { Download, Eraser, ImagePlus, Wand2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
@@ -11,7 +11,9 @@ function download(href: string, filename: string) {
   const link = document.createElement('a')
   link.href = href
   link.download = filename
+  document.body.appendChild(link)
   link.click()
+  link.remove()
 }
 
 function exportFileName(originalName: string) {
@@ -35,6 +37,18 @@ export function ImageRemoveBackgroundPage() {
   const [isDraggingFile, setIsDraggingFile] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const objectUrlsRef = useRef({ imageSrc: '', resultUrl: '' })
+
+  useEffect(() => {
+    objectUrlsRef.current = { imageSrc, resultUrl }
+  }, [imageSrc, resultUrl])
+
+  // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
+  useEffect(() => () => {
+    const { imageSrc: latestImageSrc, resultUrl: latestResultUrl } = objectUrlsRef.current
+    if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
+    if (latestResultUrl) URL.revokeObjectURL(latestResultUrl)
+  }, [])
 
   const handleFile = (nextFile: File) => {
     if (!nextFile.type.startsWith('image/')) {

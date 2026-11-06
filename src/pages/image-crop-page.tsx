@@ -1,5 +1,5 @@
 import { Download, Eraser, Eye, FlipHorizontal2, FlipVertical2, Grid3x3, ImagePlus, RotateCcw, RotateCw, Undo2 } from 'lucide-react'
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
@@ -113,12 +113,26 @@ export function ImageCropPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [preview, setPreview] = useState<CropResult | null>(null)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+  // In-progress text for number fields, so partial input ("-", "") is not snapped back to the applied value.
+  const [drafts, setDrafts] = useState<{ angle?: string; width?: string; height?: string }>({})
 
   const imgRef = useRef<HTMLImageElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customEditStartRef = useRef<CropRect | null>(null)
+  const objectUrlsRef = useRef({ imageSrc: '', preview: '' })
+
+  useEffect(() => {
+    objectUrlsRef.current = { imageSrc, preview: preview?.url ?? '' }
+  }, [imageSrc, preview])
+
+  // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
+  useEffect(() => () => {
+    const { imageSrc: latestImageSrc, preview: latestPreview } = objectUrlsRef.current
+    if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
+    if (latestPreview) URL.revokeObjectURL(latestPreview)
+  }, [])
 
   // The crop may cover the whole rotated bounding box; empty corners export transparent (PNG/WebP) or white (JPEG).
   const boundsFor = (size: ImageBounds, nextTransform: ImageTransform): CropRect => ({ x: 0, y: 0, ...rotatedBoundingSize(size, totalRotation(nextTransform)) })
@@ -226,9 +240,21 @@ export function ImageCropPage() {
   }
 
   const handleCropDimension = (dimension: 'width' | 'height', value: string) => {
+    setDrafts((current) => ({ ...current, [dimension]: value }))
     const parsed = Number(value)
-    if (!cropRect || !cropBounds || !Number.isFinite(parsed) || parsed < 1) return
+    if (!cropRect || !cropBounds || value.trim() === '' || !Number.isFinite(parsed) || parsed < 1) return
     setCropRect(resizeCropToDimensions(cropRect, dimension === 'width' ? { width: parsed } : { height: parsed }, ratio, cropBounds))
+  }
+
+  const handleAngleInput = (value: string) => {
+    setDrafts((current) => ({ ...current, angle: value }))
+    const parsed = Number(value)
+    if (value.trim() === '' || !Number.isFinite(parsed)) return
+    updateTransform({ ...transform, angle: clampFreeAngle(parsed) })
+  }
+
+  const clearDraft = (field: 'angle' | 'width' | 'height') => {
+    setDrafts((current) => ({ ...current, [field]: undefined }))
   }
 
   const pointToBounding = (clientX: number, clientY: number) => {
@@ -431,7 +457,7 @@ export function ImageCropPage() {
                 <input type="range" min={-MAX_FREE_ANGLE} max={MAX_FREE_ANGLE} step={0.5} value={transform.angle} onChange={(event) => updateTransform({ ...transform, angle: clampFreeAngle(Number(event.target.value)) })} disabled={!ready} aria-label="Rotation angle" className="min-w-0 flex-1 accent-primary" />
               </label>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="number" min={-MAX_FREE_ANGLE} max={MAX_FREE_ANGLE} step={0.1} value={transform.angle} onChange={(event) => updateTransform({ ...transform, angle: clampFreeAngle(Number(event.target.value)) })} disabled={!ready} aria-label="Rotation angle in degrees" className={cn(fieldClass, 'w-20')} />°
+                <input type="number" min={-MAX_FREE_ANGLE} max={MAX_FREE_ANGLE} step={0.1} value={drafts.angle ?? transform.angle} onChange={(event) => handleAngleInput(event.target.value)} onBlur={() => clearDraft('angle')} disabled={!ready} aria-label="Rotation angle in degrees" className={cn(fieldClass, 'w-20')} />°
               </label>
               <Button type="button" size="sm" variant="ghost" onClick={() => updateTransform(IDENTITY_TRANSFORM)} disabled={!ready || (transform.angle === 0 && transform.quarterTurns === 0 && !transform.flipH && !transform.flipV)}><Undo2 />Reset</Button>
             </div>
@@ -451,8 +477,8 @@ export function ImageCropPage() {
                 {fixedOutput && <span className="text-[0.7rem]">Locked to the output size.</span>}
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop width (px)<input type="number" min={1} value={cropRect ? Math.round(cropRect.width) : ''} onChange={(event) => handleCropDimension('width', event.target.value)} disabled={!ready} className={fieldClass} /></label>
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop height (px)<input type="number" min={1} value={cropRect ? Math.round(cropRect.height) : ''} onChange={(event) => handleCropDimension('height', event.target.value)} disabled={!ready} className={fieldClass} /></label>
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop width (px)<input type="number" min={1} value={drafts.width ?? (cropRect ? Math.round(cropRect.width) : '')} onChange={(event) => handleCropDimension('width', event.target.value)} onBlur={() => clearDraft('width')} disabled={!ready} className={fieldClass} /></label>
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">Crop height (px)<input type="number" min={1} value={drafts.height ?? (cropRect ? Math.round(cropRect.height) : '')} onChange={(event) => handleCropDimension('height', event.target.value)} onBlur={() => clearDraft('height')} disabled={!ready} className={fieldClass} /></label>
               </div>
               <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
                 Output size

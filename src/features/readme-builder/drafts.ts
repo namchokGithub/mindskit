@@ -159,7 +159,9 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 /**
- * Run a single transaction against the `drafts` object store
+ * Run a single transaction against the `drafts` object store. Resolves only
+ * once the transaction commits, so a write that later aborts (for example on
+ * a quota error) rejects instead of reporting success.
  */
 async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const db = await openDatabase()
@@ -167,9 +169,9 @@ async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStor
     return await new Promise<T>((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, mode)
       const request = run(transaction.objectStore(STORE_NAME))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-      transaction.onerror = () => reject(transaction.error)
+      transaction.oncomplete = () => resolve(request.result)
+      transaction.onerror = () => reject(transaction.error ?? request.error)
+      transaction.onabort = () => reject(transaction.error ?? new Error('Draft storage transaction was aborted.'))
     })
   } finally {
     db.close()
@@ -207,6 +209,7 @@ export function createIndexedDbDraftStorage(): DraftStorage {
             resolve(keys.map((id, index) => ({ id, record: values[index] })))
           }
           transaction.onerror = () => reject(transaction.error)
+          transaction.onabort = () => reject(transaction.error ?? new Error('Draft storage transaction was aborted.'))
         })
       } finally {
         db.close()

@@ -81,13 +81,25 @@ function typeFor(shape: Shape, suggestedName: string, generator: Generator): str
   return types.length === 1 ? types[0] : types.every((type) => type === 'int' || type === 'float64') ? 'float64' : 'any'
 }
 
+/** Go struct tag literal; JSON string escapes are valid Go escapes, and a backtick forces an interpreted string literal. */
+function structTag(jsonName: string) {
+  const tag = `json:${JSON.stringify(jsonName)}`
+  return tag.includes('`') ? JSON.stringify(tag) : `\`${tag}\``
+}
+
 function defineStruct(shape: Extract<Shape, { kind: 'object' }>, suggestedName: string, generator: Generator): string {
   const name = uniqueName(goName(suggestedName, 'Value'), generator)
   const lines: string[] = []
+  const fieldNames = new Set<string>()
   for (const [key, property] of shape.properties) {
     const type = typeFor(property.shape, key, generator)
     const shouldPointer = (property.optional || nullable(property.shape)) && type !== 'any' && !type.startsWith('[]')
-    lines.push(`\t${goName(key, 'Value')} ${shouldPointer ? `*${type}` : type} \`json:"${key}${property.optional ? ',omitempty' : ''}"\``)
+    const preferredField = goName(key, 'Value')
+    let fieldName = preferredField
+    let count = 2
+    while (fieldNames.has(fieldName)) fieldName = `${preferredField}${count++}`
+    fieldNames.add(fieldName)
+    lines.push(`\t${fieldName} ${shouldPointer ? `*${type}` : type} ${structTag(`${key}${property.optional ? ',omitempty' : ''}`)}`)
   }
   generator.declarations.push(`type ${name} struct {\n${lines.join('\n')}\n}`)
   return name

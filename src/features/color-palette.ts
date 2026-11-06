@@ -4,6 +4,8 @@ export type PaletteColor = { name: string; hex: string }
 
 const hexPattern = /(?<![\w&#])#?(?:[0-9a-f]{6}|[0-9a-f]{3})(?![0-9a-z_])/gi
 const nameEdgeCharacters = /^[\s|:*_`>#\-–—=•·,.;()[\]]+|[\s|:*_`>#\-–—=•·,.;()[\]]+$/g
+// Ordered/unordered list markers such as "1.", "1)", "- ", "* " that label a list item, not a color.
+const leadingListMarker = /^\s*(?:\d+[.)]|[-*+•])(?=\s|$)/
 const maxNameLength = 60
 
 export function isValidHexColor(value: string): boolean {
@@ -17,7 +19,7 @@ export function normalizeHexColor(value: string): string {
 }
 
 function cleanName(value: string): string {
-  const cleaned = value.replace(nameEdgeCharacters, '').replace(/\s+/g, ' ').trim()
+  const cleaned = value.replace(leadingListMarker, '').replace(nameEdgeCharacters, '').replace(/\s+/g, ' ').trim()
   return cleaned.length > maxNameLength ? `${cleaned.slice(0, maxNameLength - 1).trimEnd()}…` : cleaned
 }
 

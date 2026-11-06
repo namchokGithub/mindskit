@@ -87,8 +87,8 @@ function collectDifferences(left: unknown, right: unknown, path = '$', differenc
     const keys = new Set([...Object.keys(left), ...Object.keys(right)])
     for (const key of [...keys].sort((first, second) => first.localeCompare(second))) {
       const nextPath = joinPath(path, key)
-      if (!(key in left)) differences.push({ kind: 'added', path: nextPath, right: right[key] })
-      else if (!(key in right)) differences.push({ kind: 'removed', path: nextPath, left: left[key] })
+      if (!Object.hasOwn(left, key)) differences.push({ kind: 'added', path: nextPath, right: right[key] })
+      else if (!Object.hasOwn(right, key)) differences.push({ kind: 'removed', path: nextPath, left: left[key] })
       else collectDifferences(left[key], right[key], nextPath, differences)
     }
     return differences

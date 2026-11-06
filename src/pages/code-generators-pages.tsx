@@ -24,7 +24,9 @@ function download(href: string, filename: string) {
   const link = document.createElement("a");
   link.href = href;
   link.download = filename;
+  document.body.append(link);
   link.click();
+  link.remove();
 }
 
 export function BarcodePage() {
@@ -81,12 +83,11 @@ export function BarcodePage() {
   const downloadSvg = () => {
     if (!barcodeRef.current?.childNodes.length) return;
     const svg = new XMLSerializer().serializeToString(barcodeRef.current);
-    download(
-      URL.createObjectURL(
-        new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
-      ),
-      "mindskit-barcode.svg",
+    const url = URL.createObjectURL(
+      new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
     );
+    download(url, "mindskit-barcode.svg");
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (

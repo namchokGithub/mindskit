@@ -51,7 +51,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Base64 Encode / Decode
 - URL Encode / Decode
 - HTML Encode / Decode
-- JWT Decoder, with formatted header/payload inspection and expiry status (decoding only; no signature verification)
+- JWT Decoder, with formatted header/payload inspection, expiry status, local HS256/HS384/HS512 signature verification, and an HMAC JWT encoder (verification only shows the token was signed with the supplied secret; it does not prove the issuer or claims are trustworthy)
 
 ### Generators
 

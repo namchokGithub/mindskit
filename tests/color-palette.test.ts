@@ -32,6 +32,16 @@ test('extracts HEX colors without # and normalizes them for copying', () => {
   ])
 })
 
+test('ignores list markers before a color and uses the label above instead', () => {
+  assert.deepEqual(extractColorsFromText('Primary Gold\n1. #D5C49A\n\nSoft Pearl\n2) #F5F0E4\n\nInk\n- #111\n\n* #222\n\n3. Accent #abc'), [
+    { name: 'Primary Gold', hex: '#D5C49A' },
+    { name: 'Soft Pearl', hex: '#F5F0E4' },
+    { name: 'Ink', hex: '#111' },
+    { name: 'Color 4', hex: '#222' },
+    { name: 'Accent', hex: '#ABC' },
+  ])
+})
+
 test('falls back to numbered names and keeps duplicates', () => {
   assert.deepEqual(extractColorsFromText('#111111 #111111\n\n#222'), [
     { name: 'Color 1', hex: '#111111' },

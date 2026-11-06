@@ -82,7 +82,12 @@ export function jsonToTypeScript(input: string, rootName: string): string {
   const root = infer(parsed)
   const generator: Generator = { declarations: [], names: new Set() }
   const normalizedRoot = typeName(rootName, 'Root')
-  const rootType = root.kind === 'object' ? defineInterface(root, normalizedRoot, generator) : typeFor(root, normalizedRoot, generator)
-  const declarations = generator.declarations.reverse()
-  return root.kind === 'object' ? declarations.join('\n\n') : [...declarations, `type ${normalizedRoot} = ${rootType};`].join('\n\n')
+  if (root.kind === 'object') {
+    defineInterface(root, normalizedRoot, generator)
+    return generator.declarations.reverse().join('\n\n')
+  }
+  const aliasName = uniqueName(normalizedRoot, generator)
+  const itemName = root.kind === 'array' && singular(normalizedRoot) === normalizedRoot ? `${normalizedRoot}Item` : normalizedRoot
+  const rootType = typeFor(root, itemName, generator)
+  return [...generator.declarations.reverse(), `type ${aliasName} = ${rootType};`].join('\n\n')
 }

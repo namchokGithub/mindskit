@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 import {
   AlertTriangle,
@@ -690,6 +691,24 @@ export function ReadmeBuilderPage() {
   }
 
   async function handleDeleteDraft(id: string) {
+    if (id === documentRef.current.id) {
+      // A pending autosave would otherwise write the deleted draft straight back.
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current)
+        autosaveTimerRef.current = undefined
+      }
+      // Keep editing the open document, but as a new unsaved draft so the deleted id is never saved again.
+      // Undo/redo snapshots get the new id too, so restoring one cannot resurrect the deleted draft.
+      const newId = crypto.randomUUID()
+      const detach = (snapshot: ReadmeDocument): ReadmeDocument => ({ ...snapshot, id: newId })
+      const detached = detach(documentRef.current)
+      if (pendingBaseRef.current) pendingBaseRef.current = detach(pendingBaseRef.current)
+      updatePast(pastRef.current.map(detach))
+      updateFuture(futureRef.current.map(detach))
+      documentRef.current = detached
+      setDoc(detached)
+      setSaveStatus({ state: 'idle' })
+    }
     try {
       await deleteDraft(id)
       await refreshDrafts()
@@ -938,7 +957,7 @@ export function ReadmeBuilderPage() {
             <h2 className="text-sm font-medium text-muted-foreground">Live preview</h2>
             <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-card p-4">
               <div className="markdown-preview">
-                <ReactMarkdown>{markdown}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
               </div>
             </div>
           </div>
@@ -978,7 +997,7 @@ export function ReadmeBuilderPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="markdown-preview">
-              <ReactMarkdown>{markdown}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
             </div>
           </div>
         </div>
