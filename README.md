@@ -91,6 +91,10 @@ One tool with tabs and a preview from 480p to 8K; full screen keeps the display 
 - Screensavers: bouncing DVD, flip clock, countdown, and stopwatch with laps (FlipClock.js cards in light or dark themes), quotes in English or Thai, no signal, Matrix rain mixing English, Thai, Chinese, Japanese, Korean, Portuguese, and Russian characters, and an on-screen QR code with a caption
 - White Noise: white, pink, or brown noise with volume, a stop timer, and animated TV static
 
+### Minecraft Guide
+
+- Minecraft Tick Calculator: convert game ticks ↔ seconds ↔ minutes as you type (20 ticks per second), with redstone ticks (2 game ticks each) and reference tables for 1–100 ticks and 1 second–20 minutes (one Minecraft day = 24,000 ticks)
+
 ## Themes
 
 Choose the system theme or one of six built-in themes. Light themes appear first in the picker:

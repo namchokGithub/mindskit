@@ -1,6 +1,7 @@
 import {
   AlignLeft,
   MonitorPlay,
+  Pickaxe,
   AppWindow,
   Barcode,
   Binary,
@@ -49,6 +50,7 @@ export const categories: CategoryDefinition[] = [
   { id: "converters", name: "Converters" },
   { id: "images", name: "Images" },
   { id: "screen", name: "Screen Simulator" },
+  { id: "minecraft", name: "Minecraft Guide" },
 ];
 
 export const tools: ToolDefinition[] = [
@@ -502,6 +504,16 @@ export const tools: ToolDefinition[] = [
     path: "/screen-simulator",
     icon: MonitorPlay,
     isNew: true,
+  },
+
+  // Minecraft Guide
+  {
+    id: "minecraft-tick-calculator",
+    name: "Minecraft Tick Calculator",
+    description: "Convert Minecraft game ticks and redstone ticks to seconds and minutes, with reference tables.",
+    category: "minecraft",
+    path: "/minecraft/tick-calculator",
+    icon: Pickaxe,
   },
 ];
 
