@@ -21,17 +21,19 @@ export function ToolPageHeader({
   const categoryName = categories.find((c) => c.id === category)?.name;
 
   return (
-    <div className="max-w-[760px] space-y-1.5 lg:pt-3">
-      {categoryName && (
-        <p className="text-xs text-muted-foreground">
-          {categoryName} / {title}
-        </p>
-      )}
-      <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-        {title}
-      </h1>
-      <p className="text-sm text-muted-foreground">{description}</p>
-      {showRememberInput && <label className="flex w-full items-center gap-1.5 text-xs text-muted-foreground sm:w-fit">
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between lg:gap-6 lg:pt-1">
+      <div className="min-w-0 max-w-[760px] space-y-1">
+        {categoryName && (
+          <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            {categoryName}
+          </p>
+        )}
+        <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          {title}
+        </h1>
+        <p className="text-sm leading-snug text-muted-foreground">{description}</p>
+      </div>
+      {showRememberInput && <label className="flex w-full shrink-0 items-center gap-1.5 text-xs text-muted-foreground sm:w-fit">
         <Checkbox
           checked={enabled}
           onCheckedChange={(checked) => setEnabled(checked === true)}

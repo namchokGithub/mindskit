@@ -3,6 +3,7 @@ import { Barcode, Download, Eraser, FileText } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { ToolPageHeader } from "@/components/tool/tool-page-header";
+import { ToolPage, WorkspaceSingle } from "@/components/tool/workspace";
 import { ToolStatus } from "@/components/tool/tool-status";
 import { TextStats } from "@/components/tool/text-stats";
 import { Button } from "@/components/ui/button";
@@ -191,29 +192,31 @@ function GeneratorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+    <ToolPage>
       <ToolPageHeader title={title} description={description} />
-      <div className="flex shrink-0 flex-wrap gap-2">
-        <Button type="button" onClick={onGenerate} disabled={disabled}>
+      <WorkspaceSingle
+        toolbar={<>
+        <Button type="button" size="sm" onClick={onGenerate} disabled={disabled}>
           {icon}
           {generateLabel}
         </Button>
-        <Button type="button" variant="outline" onClick={onSample}>
+        <Button type="button" variant="outline" size="sm" onClick={onSample}>
           <FileText />
           Sample
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
+          size="sm"
           onClick={onClear}
           disabled={disabled}>
           <Eraser />
           Clear
         </Button>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-        {children}
-      </div>
-    </div>
+        </>}
+        className="flex-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">{children}</div>
+      </WorkspaceSingle>
+    </ToolPage>
   );
 }

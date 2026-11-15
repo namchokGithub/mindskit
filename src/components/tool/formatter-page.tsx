@@ -8,6 +8,7 @@ import { ToolPageHeader } from "@/components/tool/tool-page-header";
 import { ToolStatus } from "@/components/tool/tool-status";
 import { JsonPrecisionWarning } from '@/components/tool/json-precision-warning'
 import { TextStats } from "@/components/tool/text-stats";
+import { ResultReveal, ToolPage, WorkspacePane, WorkspaceSplit } from "@/components/tool/workspace";
 import { Button } from "@/components/ui/button";
 import { usePersistedInput } from "@/hooks/use-persisted-input";
 import { useLargeInputConfirmation } from "@/hooks/use-large-input-confirmation";
@@ -72,11 +73,11 @@ export function FormatterPage(config: FormatterPageConfig) {
   };
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+    <ToolPage>
       <ToolPageHeader title={config.title} description={config.description} />
 
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/50 px-3 py-2">
+      <WorkspaceSplit
+        toolbar={<>
           <Button
             type="button"
             size="sm"
@@ -98,7 +99,7 @@ export function FormatterPage(config: FormatterPageConfig) {
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleClear}
             disabled={!input}>
@@ -115,16 +116,8 @@ export function FormatterPage(config: FormatterPageConfig) {
             <WrapText />
             Wrap
           </Button>
-        </div>
-
-        <div className="tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <div className="flex min-h-65 min-w-0 flex-col bg-editor/40 lg:min-h-0">
-            <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-1.5">
-              <span className="text-sm font-medium text-muted-foreground">
-                Input
-              </span>
-              <TextStats value={input} />
-            </div>
+        </>}>
+          <WorkspacePane label="Input" actions={<TextStats value={input} />}>
             <CodeEditor
               bare
               value={input}
@@ -135,14 +128,12 @@ export function FormatterPage(config: FormatterPageConfig) {
               errorLine={result && !result.ok ? result.line : undefined}
               fitContent
             />
-          </div>
+          </WorkspacePane>
 
-          <div className="flex min-h-65 min-w-0 flex-col bg-muted/20 lg:min-h-0">
-            <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-1.5">
-              <span className="text-sm font-medium text-muted-foreground">
-                Output
-              </span>
-              <div className="flex items-center gap-2">
+          <WorkspacePane
+            label="Output"
+            tone="output"
+            actions={<>
                 {outputModes.length > 1 && (
                   <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
                     {outputModes.map((mode) => (
@@ -159,10 +150,9 @@ export function FormatterPage(config: FormatterPageConfig) {
                   </div>
                 )}
                 <CopyButton value={result?.ok ? result.output : ""} />
-              </div>
-            </div>
+            </>}>
             {config.outputPreview && result?.ok && (outputMode === "form" || outputMode === "tree") ? (
-              config.outputPreview(result.output, outputMode)
+              <ResultReveal resultKey={`${outputMode}-${result.output.length}`}>{config.outputPreview(result.output, outputMode)}</ResultReveal>
             ) : (
               <CodeEditor
                 bare
@@ -175,9 +165,8 @@ export function FormatterPage(config: FormatterPageConfig) {
                 fitContent
               />
             )}
-          </div>
-        </div>
-      </div>
+          </WorkspacePane>
+      </WorkspaceSplit>
 
       <div className="flex shrink-0 flex-col gap-2">
         {config.checkJsonPrecision && <JsonPrecisionWarning input={input} />}
@@ -190,6 +179,6 @@ export function FormatterPage(config: FormatterPageConfig) {
         />
       </div>
       {dialog}
-    </div>
+    </ToolPage>
   );
 }
