@@ -87,7 +87,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 One tool with tabs and a preview from 480p to 8K; full screen keeps the display awake (Screen Wake Lock) and hides an idle cursor.
 
 - Colors: solid colors (presets, picker, HEX/RGB input), a black-to-white gray slider, and color-temperature lighting from 1500 K to 8500 K
-- Screen Pranks, with a clear on-page prank notice: hacker typing with your own code, a movie-style hacker dashboard, broken screen, Windows 10/11/XP blue screens, fake Teams/Meet/Zoom/Discord calls (your name and members, a custom Meet name, and your own avatar color or a photo that stays in the browser), and fake system updates with timed or fixed progress
+- Screen Pranks, with a clear on-page prank notice: hacker typing with your own code, syntax highlighting, and IDE-style or custom color themes, a movie-style hacker dashboard, broken screen, Windows 10/11/XP blue screens, fake Teams/Meet/Zoom/Discord calls (your name and members, a custom Meet name, and your own avatar color or a photo that stays in the browser), and fake system updates with timed or fixed progress
 - Screensavers: bouncing DVD, flip clock, countdown, and stopwatch with laps (FlipClock.js cards in light or dark themes), quotes in English or Thai, no signal, Matrix rain mixing English, Thai, Chinese, Japanese, Korean, Portuguese, and Russian characters, and an on-screen QR code with a caption
 - White Noise: white, pink, or brown noise with volume, a stop timer, and animated TV static
 

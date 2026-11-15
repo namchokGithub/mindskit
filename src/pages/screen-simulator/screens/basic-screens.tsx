@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { tokenizeCode, visibleTokens, type CodeTheme } from '@/features/screen-simulator/code-theme'
 import { SAMPLE_HACKER_CODE, progressPercent, type ProgressMode } from '@/features/screen-simulator/screen'
 
 import { useElapsed } from '../stage'
@@ -9,8 +10,9 @@ export function ColorScreen({ hex }: { hex: string }) {
 }
 
 /** Green-on-black code that types itself; loops back to the start when `loop` is on. */
-export function HackerTypingScreen({ code, charsPerTick, loop }: { code: string; charsPerTick: number; loop: boolean }) {
+export function HackerTypingScreen({ code, charsPerTick, loop, theme }: { code: string; charsPerTick: number; loop: boolean; theme: CodeTheme }) {
   const source = code.trim() ? code : SAMPLE_HACKER_CODE
+  const tokens = useMemo(() => tokenizeCode(source), [source])
   const [length, setLength] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -35,10 +37,12 @@ export function HackerTypingScreen({ code, charsPerTick, loop }: { code: string;
   }, [length])
 
   return (
-    <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-black p-[3cqh] font-mono leading-snug text-[#33FF66]" style={{ fontSize: '2.4cqh' }}>
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden p-[3cqh] font-mono leading-snug transition-colors duration-300 motion-reduce:transition-none" style={{ fontSize: '2.4cqh', background: theme.background, color: theme.colors.plain }}>
       <pre className="whitespace-pre-wrap break-words">
-        {source.slice(0, length)}
-        <span className="inline-block h-[1em] w-[0.6em] animate-pulse bg-[#33FF66] align-text-bottom" />
+        {visibleTokens(tokens, length).map((token, index) => (
+          <span key={index} style={{ color: theme.colors[token.type], fontStyle: token.type === 'comment' ? 'italic' : undefined, fontWeight: token.type === 'keyword' ? 600 : undefined }}>{token.text}</span>
+        ))}
+        <span className="inline-block h-[1em] w-[0.6em] animate-pulse align-text-bottom motion-reduce:animate-none" style={{ background: theme.cursor }} />
       </pre>
     </div>
   )
