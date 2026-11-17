@@ -92,6 +92,8 @@ existing legacy paths unless the change explicitly migrates them.
 - `AppShell` deliberately forms a stacking context so the fixed decorative
   `src/assets/bg.png` remains behind content. Keep the asset decorative,
   bottom-aligned, and legible rather than turning it into a viewport cover.
+- Follow `docs/ui-patterns.md` for tool page structure: `ToolPage`, `ToolPageHeader`, one of the four workspace
+  layouts in `src/components/tool/workspace.tsx`, one primary button per toolbar, and `EmptyState` / output panes.
 - Follow `docs/animation.md` for any animation: keep it opt-in per feature,
   use `MotionProvider`/`m.*` and the presets in `src/lib/motion.ts`, never
   stack Motion `layout` or AutoAnimate on `@dnd-kit` sortable items, and

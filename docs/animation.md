@@ -21,6 +21,9 @@ the reference implementation.
   Do not add it to shared components (`CopyButton`, `ToolStatus`,
   `CodeEditor`, layout) without an explicit decision, because that changes
   every tool.
+  Decided so far: `CopyButton` pops its check icon, and the shared workspace
+  primitives (`ToolPage` fade-in, `ResultReveal`, Home card hover lift) use
+  CSS-only motion as described in `docs/ui-patterns.md`.
 - **Stay local.** Motion and AutoAnimate are bundled. Do not load animation
   assets or libraries from a CDN (see `public/_headers` CSP).
 

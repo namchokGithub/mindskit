@@ -23,6 +23,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 export function AppShell() {
   const { pathname } = useLocation();
@@ -75,7 +76,11 @@ export function AppShell() {
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[min(56vw,58rem)] bg-contain bg-bottom bg-no-repeat opacity-70"
+        className={cn(
+          "pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[min(56vw,58rem)] bg-contain bg-bottom bg-no-repeat transition-opacity duration-300 motion-reduce:transition-none",
+          // Decorative only: quieter behind tools so it never competes with editors and results.
+          pathname === "/" ? "opacity-70" : "opacity-35",
+        )}
         style={{ backgroundImage: `url(${appBackground})` }}
       />
       <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:sticky">

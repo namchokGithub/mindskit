@@ -47,6 +47,7 @@ import { SqlFormatterPage, SqlInsertPage, SqlMinifierPage } from '@/pages/sql-to
 import { CreateTableTypesPage, SqlParametersPage, SqlSyntaxCheckerPage } from '@/pages/sql-advanced-pages'
 import { SqlInClausePage } from '@/pages/sql-in-clause-page'
 import { LicensePage } from '@/pages/license-page'
+import { MinecraftTickCalculatorPage } from '@/pages/minecraft-tick-calculator-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { PrivacyPage } from '@/pages/privacy-page'
 import { Base64Page, HtmlEncodeDecodePage, RandomStringPage, UnixTimestampPage, UrlEncodeDecodePage, UuidPage } from '@/pages/quick-tools-pages'
@@ -150,6 +151,7 @@ export default function App() {
             .map((tool) => (
               <Route key={tool.id} path={tool.path} element={<ComingSoonPage tool={tool} />} />
             ))}
+          <Route path="/minecraft/tick-calculator" element={<MinecraftTickCalculatorPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

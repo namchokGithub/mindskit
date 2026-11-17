@@ -37,8 +37,8 @@ export function HomePage() {
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {getToolsByCategory(category.id).map((tool) => (
-              <Link key={tool.id} to={tool.path}>
-                <Card className="h-full transition-colors hover:border-primary/50 hover:bg-accent/40">
+              <Link key={tool.id} to={tool.path} className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                <Card className="h-full transition-[transform,border-color,background-color,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:bg-accent/40 group-hover:shadow-md group-focus-visible:border-primary/60 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between gap-2 text-base">
                       <span className="flex min-w-0 items-center gap-2">
@@ -53,7 +53,7 @@ export function HomePage() {
                           <Badge className="shrink-0 text-[10px]">New</Badge>
                         )}
                       </span>
-                      <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

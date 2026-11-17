@@ -6,6 +6,7 @@ import { CopyButton } from '@/components/tool/copy-button'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { TextStats } from '@/components/tool/text-stats'
+import { ResultReveal, ToolPage, WorkspacePane, WorkspaceSplit } from '@/components/tool/workspace'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -112,11 +113,11 @@ export function TextTransformPage(config: TextTransformPageConfig) {
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+    <ToolPage>
       <ToolPageHeader title={config.title} description={config.description} />
 
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/50 px-3 py-2">
+      <WorkspaceSplit
+        toolbar={<>
           <Button type="button" size="sm" onClick={() => confirm(input, () => run())} disabled={!input}>
             <ActionIcon />
             {config.actionLabel}
@@ -142,31 +143,26 @@ export function TextTransformPage(config: TextTransformPageConfig) {
           )}
           {config.timeZone && option === 'to-date' && <TimeZoneSelect value={timeZone} onChange={handleTimeZoneChange} />}
           <Button type="button" variant="outline" size="sm" onClick={handleSample}><FileText />Sample</Button>
-          <Button type="button" variant="outline" size="sm" onClick={handleClear} disabled={!input}><Eraser />Clear</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={handleClear} disabled={!input}><Eraser />Clear</Button>
           <Button type="button" variant="outline" size="sm" aria-pressed={wrap} onClick={() => setWrap((value) => !value)} className={cn(wrap && 'bg-accent text-accent-foreground')}><WrapText />Wrap</Button>
-        </div>
-
-        <div className="tool-workspace-grid grid min-h-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <div className="flex min-h-65 min-w-0 flex-col bg-editor/40 lg:min-h-0">
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Input</span><TextStats value={input} /></div>
+        </>}>
+          <WorkspacePane label="Input" actions={<TextStats value={input} />}>
             <CodeEditor bare value={input} onChange={handleInputChange} placeholder={config.inputPlaceholder} wrap={wrap} ariaLabel="Input" language={config.language ?? 'text'} fitContent />
-          </div>
+          </WorkspacePane>
 
-          <div className="flex min-h-65 min-w-0 flex-col bg-muted/20 lg:min-h-0">
-            <div className="flex items-center justify-between px-3 py-1.5"><span className="text-sm font-medium text-muted-foreground">Output</span><CopyButton value={hasRun && !error ? output : ''} /></div>
+          <WorkspacePane label="Output" tone="output" actions={<CopyButton value={hasRun && !error ? output : ''} />}>
             {config.outputPreview ? (
               <div className="min-h-[12rem] max-h-[32rem] w-full overflow-auto bg-muted/30 p-4">
-                {hasRun && !error ? config.outputPreview(output) : <span className="text-sm text-muted-foreground">Result will appear here.</span>}
+                {hasRun && !error ? <ResultReveal resultKey={`${option}-${output.length}`}>{config.outputPreview(output)}</ResultReveal> : <span className="text-sm text-muted-foreground">Result will appear here.</span>}
               </div>
             ) : (
               <CodeEditor bare value={hasRun && !error ? output : ''} readOnly placeholder="Result will appear here." wrap={wrap} ariaLabel="Output" language={config.language ?? 'text'} fitContent />
             )}
-          </div>
-        </div>
-      </div>
+          </WorkspacePane>
+      </WorkspaceSplit>
       <ToolStatus state={!hasRun ? 'idle' : error ? 'invalid' : 'valid'} message={error ?? undefined} validLabel={`${config.actionLabel} completed`} />
       {dialog}
-    </div>
+    </ToolPage>
   )
 }
 

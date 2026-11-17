@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { CODE_THEMES, customCodeTheme } from '@/features/screen-simulator/code-theme'
 import { NOISE_TIMER_MINUTES, fillNoise, type NoiseColor } from '@/features/screen-simulator/noise'
 import {
   COLOR_PRESETS,
@@ -171,6 +172,10 @@ export function ScreenSimulatorPage() {
   const [hackerCode, setHackerCode] = useState('')
   const [hackerSpeed, setHackerSpeed] = useState(3)
   const [hackerLoop, setHackerLoop] = useState(true)
+  const [codeThemeId, setCodeThemeId] = useState('classic')
+  const [customCodeText, setCustomCodeText] = useState('#33FF66')
+  const [customCodeBackground, setCustomCodeBackground] = useState('#000000')
+  const codeTheme = codeThemeId === 'custom' ? customCodeTheme(customCodeText, customCodeBackground) : CODE_THEMES.find((theme) => theme.id === codeThemeId) ?? CODE_THEMES[0]
   const [bsodVariant, setBsodVariant] = useState<BsodVariant>('win10')
   const [progressMode, setProgressMode] = useState<ProgressMode>('auto')
   const [duration, setDuration] = useState(120)
@@ -303,7 +308,7 @@ export function ScreenSimulatorPage() {
     background = mode === 'lighting' ? kelvinToHex(kelvin) : mode === 'gray' ? grayHex(grayLevel) : colorHex
     screen = <ColorScreen hex={background} />
   } else if (tab === 'pranks') {
-    if (mode === 'hacker') screen = <HackerTypingScreen code={hackerCode} charsPerTick={hackerSpeed} loop={hackerLoop} />
+    if (mode === 'hacker') screen = <HackerTypingScreen code={hackerCode} charsPerTick={hackerSpeed} loop={hackerLoop} theme={codeTheme} />
     else if (mode === 'hacker-sim') screen = <HackerSimulatorScreen speed={hackerSimSpeed} />
     else if (mode === 'broken') screen = <BrokenScreen src={crack.src} />
     else if (mode === 'bsod') screen = <BsodScreen variant={bsodVariant} mode={progressMode} durationSeconds={duration} fixedPercent={fixedPercent} />
@@ -456,6 +461,38 @@ export function ScreenSimulatorPage() {
 
           {tab === 'pranks' && mode === 'hacker' && (
             <>
+              <Field label="Code theme">
+                <Select value={codeThemeId} onValueChange={setCodeThemeId}>
+                  <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CODE_THEMES.map((theme) => (
+                      <SelectItem key={theme.id} value={theme.id}>
+                        <span className="flex items-center gap-2">
+                          <span aria-hidden="true" className="flex h-3.5 w-7 overflow-hidden rounded-sm border border-border">
+                            <span className="flex-1" style={{ background: theme.background }} />
+                            <span className="flex-1" style={{ background: theme.colors.keyword }} />
+                            <span className="flex-1" style={{ background: theme.colors.string }} />
+                          </span>
+                          {theme.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {codeThemeId === 'custom' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input type="color" value={customCodeText.toLowerCase()} onChange={(event) => setCustomCodeText(event.target.value.toUpperCase())} aria-label="Code text color" className="h-8 w-10 cursor-pointer rounded-lg border border-input bg-transparent p-0.5" />
+                    Text
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input type="color" value={customCodeBackground.toLowerCase()} onChange={(event) => setCustomCodeBackground(event.target.value.toUpperCase())} aria-label="Code background color" className="h-8 w-10 cursor-pointer rounded-lg border border-input bg-transparent p-0.5" />
+                    Background
+                  </label>
+                </div>
+              )}
               <Field label={`Speed: ${hackerSpeed} characters per tick`}>
                 <input type="range" min={1} max={30} value={hackerSpeed} onChange={(event) => setHackerSpeed(Number(event.target.value))} className="accent-primary" />
               </Field>
