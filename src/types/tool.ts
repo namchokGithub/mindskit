@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type ToolCategory = 'json' | 'xml' | 'formatters' | 'sql' | 'text-tools' | 'encode-decode' | 'generators' | 'converters' | 'images' | 'screen' | 'minecraft'
+export type ToolCategory = 'json' | 'xml' | 'formatters' | 'sql' | 'text-tools' | 'encode-decode' | 'generators' | 'converters' | 'images' | 'screen' | 'game-toolkit'
 
 export interface ToolDefinition {
   id: string

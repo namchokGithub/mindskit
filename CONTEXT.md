@@ -57,7 +57,7 @@ There are 51 registered tools in eight categories. Exact paths and metadata live
 | Converters (`converters`) | JSON → YAML, JSON → CSV, Unix Timestamp, JSON → Go Struct, JSON → TypeScript, JSON ↔ XML, Number Base, Letters ↔ Numbers, Color, Date Formatter, Roman Numeral Date |
 | Images (`images`) | Image Resize & Convert, Image Crop, Remove Background, Screenshot Beautifier, Favicon Generator |
 | Screen Simulator (`screen`) | Screen Simulator |
-| Minecraft Guide (`minecraft`) | Minecraft Tick Calculator |
+| Game Toolkit (`game-toolkit`) | Minecraft Tick Calculator |
 
 - JSON routes retain `/formatters/...`; XML tools use both `/formatters/xml` and `/xml/...`. Category IDs do not necessarily match URL prefixes.
 - XML Minify, WSDL Formatter, and SOAP Formatter reuse `XmlFormatterPage` with distinct metadata/storage keys. WSDL/SOAP validation is XML syntax validation, not schema or protocol validation.

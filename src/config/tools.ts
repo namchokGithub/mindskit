@@ -50,7 +50,7 @@ export const categories: CategoryDefinition[] = [
   { id: "converters", name: "Converters" },
   { id: "images", name: "Images" },
   { id: "screen", name: "Screen Simulator" },
-  { id: "minecraft", name: "Minecraft Guide" },
+  { id: "game-toolkit", name: "Game Toolkit" },
 ];
 
 export const tools: ToolDefinition[] = [
@@ -506,12 +506,12 @@ export const tools: ToolDefinition[] = [
     isNew: true,
   },
 
-  // Minecraft Guide
+  // Game Toolkit
   {
     id: "minecraft-tick-calculator",
     name: "Minecraft Tick Calculator",
     description: "Convert Minecraft game ticks and redstone ticks to seconds and minutes, with reference tables.",
-    category: "minecraft",
+    category: "game-toolkit",
     path: "/minecraft/tick-calculator",
     icon: Pickaxe,
   },
