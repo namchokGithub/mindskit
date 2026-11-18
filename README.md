@@ -93,7 +93,7 @@ One tool with tabs and a preview from 480p to 8K; full screen keeps the display 
 
 ### Game Toolkit
 
-- Minecraft Crafting Calculator (Java Edition 1.21.11): search items with icons, add several items with amounts, and get the merged raw-material list (with stack counts), crafts needed, leftovers, and an expandable crafting tree; copy the material list. Crafting-table recipes only (shaped and shapeless); smelted, mined, and dropped items count as base materials
+- Minecraft Crafting Calculator (Java Edition 1.21.11 or 1.20.6): search items with icons, add several items with amounts, and get the merged raw-material list (with stack counts), crafts needed, leftovers, an expandable crafting tree, an interactive dependency graph (zoom, pan, collapse branches, highlight paths), and a material-flow (Sankey) diagram, with PNG/SVG export and a copyable material list. Covers crafting-table, furnace/blast furnace/smoker/campfire, stonecutter, and smithing recipes; choose a recipe when an item has several, pick alternative ingredients (such as the wood type), and subtract items you already own
 - Minecraft Tick Calculator: convert game ticks ↔ seconds ↔ minutes as you type (20 ticks per second), with redstone ticks (2 game ticks each) and reference tables for 1–100 ticks and 1 second–20 minutes (one Minecraft day = 24,000 ticks)
 
 ## Themes
@@ -123,6 +123,8 @@ All processing happens in the browser. Pasted text and generated values are not 
 - [remark-gfm](https://github.com/remarkjs/remark-gfm) for GitHub-flavored Markdown previews
 - [Motion](https://motion.dev/), [AutoAnimate](https://auto-animate.formkit.com/), and [dnd kit](https://dndkit.com/) for animations and drag-to-reorder
 - [FlipClock.js](https://flipclockjs.com/) for Screen Simulator flip cards
+- [React Flow](https://reactflow.dev/) (`@xyflow/react`) and [d3-sankey](https://github.com/d3/d3-sankey) for the Minecraft crafting graph and flow diagram
+- [minecraft-data](https://github.com/PrismarineJS/minecraft-data), [minecraft-assets](https://github.com/PrismarineJS/minecraft-assets), and [misode/mcmeta](https://github.com/misode/mcmeta) as build-time sources for Minecraft items, textures, recipes, and tags
 - [linkedom](https://github.com/WebReflection/linkedom) as a test-only `DOMParser` for XML tests in Node
 
 ## Getting started
