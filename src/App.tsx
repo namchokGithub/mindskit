@@ -37,6 +37,9 @@ const QrCodePage = lazy(() =>
 const ReadmeBuilderPage = lazy(() =>
   import('@/pages/readme-builder-page').then((module) => ({ default: module.ReadmeBuilderPage })),
 )
+const MinecraftCraftingCalculatorPage = lazy(() =>
+  import('@/pages/minecraft-crafting-calculator-page').then((module) => ({ default: module.MinecraftCraftingCalculatorPage })),
+)
 const ScreenSimulatorPage = lazy(() =>
   import('@/pages/screen-simulator/screen-simulator-page').then((module) => ({ default: module.ScreenSimulatorPage })),
 )
@@ -152,6 +155,14 @@ export default function App() {
               <Route key={tool.id} path={tool.path} element={<ComingSoonPage tool={tool} />} />
             ))}
           <Route path="/minecraft/tick-calculator" element={<MinecraftTickCalculatorPage />} />
+          <Route
+            path="/minecraft/crafting-calculator"
+            element={
+              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+                <MinecraftCraftingCalculatorPage />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

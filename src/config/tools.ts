@@ -2,6 +2,7 @@ import {
   AlignLeft,
   MonitorPlay,
   Pickaxe,
+  Hammer,
   AppWindow,
   Barcode,
   Binary,
@@ -514,6 +515,14 @@ export const tools: ToolDefinition[] = [
     category: "game-toolkit",
     path: "/minecraft/tick-calculator",
     icon: Pickaxe,
+  },
+  {
+    id: "minecraft-crafting-calculator",
+    name: "Minecraft Crafting Calculator",
+    description: "Pick items and amounts to get every raw material and the crafting tree for Minecraft 1.21.11.",
+    category: "game-toolkit",
+    path: "/minecraft/crafting-calculator",
+    icon: Hammer,
   },
 ];
 

@@ -141,6 +141,12 @@ importers:
       linkedom:
         specifier: ^0.18.15
         version: 0.18.15
+      minecraft-assets:
+        specifier: ^1.19.0
+        version: 1.19.0
+      minecraft-data:
+        specifier: ^3.119.0
+        version: 3.119.0
       oxlint:
         specifier: ^1.79.0
         version: 1.80.0
@@ -2920,6 +2926,12 @@ packages:
   mimic-function@5.0.1:
     resolution: {integrity: sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==}
     engines: {node: '>=18'}
+
+  minecraft-assets@1.19.0:
+    resolution: {integrity: sha512-OZswwMV6LTfVo67KttRLAxTAmD2pMH14WNHUt1NXAikGkKkeogqbRFUKs7CcoZee576rrB6YlQJTuutYlLbOaA==}
+
+  minecraft-data@3.119.0:
+    resolution: {integrity: sha512-RElo0o2RooEzpeQO+QEHzTmHVTgOdbbomGQYBmWIaU1pupEmAItQb+LpJyL2EDXmpKicOU4swtBVzwIWae5l5g==}
 
   minimatch@10.2.6:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
@@ -6637,6 +6649,10 @@ snapshots:
   mimic-fn@3.1.0: {}
 
   mimic-function@5.0.1: {}
+
+  minecraft-assets@1.19.0: {}
+
+  minecraft-data@3.119.0: {}
 
   minimatch@10.2.6:
     dependencies:

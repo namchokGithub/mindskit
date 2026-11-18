@@ -8,7 +8,8 @@
     "build": "node scripts/fetch-bg-removal-assets.mjs && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:sql": "node --test tests/*.test.ts"
+    "test:sql": "node --test tests/*.test.ts",
+    "data:minecraft": "node scripts/build-minecraft-data.mjs"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",
@@ -57,6 +58,8 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "linkedom": "^0.18.15",
+    "minecraft-assets": "^1.19.0",
+    "minecraft-data": "^3.119.0",
     "oxlint": "^1.79.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

@@ -93,6 +93,7 @@ One tool with tabs and a preview from 480p to 8K; full screen keeps the display 
 
 ### Game Toolkit
 
+- Minecraft Crafting Calculator (Java Edition 1.21.11): search items with icons, add several items with amounts, and get the merged raw-material list (with stack counts), crafts needed, leftovers, and an expandable crafting tree; copy the material list. Crafting-table recipes only (shaped and shapeless); smelted, mined, and dropped items count as base materials
 - Minecraft Tick Calculator: convert game ticks ↔ seconds ↔ minutes as you type (20 ticks per second), with redstone ticks (2 game ticks each) and reference tables for 1–100 ticks and 1 second–20 minutes (one Minecraft day = 24,000 ticks)
 
 ## Themes
