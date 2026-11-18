@@ -125,7 +125,7 @@ export function CraftGraphView({ plan, itemByName, isDark }: { plan: CraftPlan; 
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          colorMode={isDark ? 'dark' : 'light'}
+          style={{ colorScheme: isDark ? 'dark' : 'light' }}
           fitView
           minZoom={0.1}
           nodesConnectable={false}
