@@ -179,7 +179,7 @@ export function MinecraftCraftingCalculatorPage() {
 
       {loadError && <ToolStatus state="invalid" message={loadError} />}
 
-      <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <div className="grid min-h-0 gap-4">
         <div className="flex min-w-0 flex-col gap-4">
           <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -226,75 +226,77 @@ export function MinecraftCraftingCalculatorPage() {
             )}
           </section>
 
-          {plan && index && (plan.steps.some((step) => usableRecipes(step.name, index).length > 1) || plan.alternatives.length > 0) && (
-            <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
-              <h2 className="text-sm font-medium">Recipes and ingredients</h2>
-              {plan.steps.filter((step) => usableRecipes(step.name, index).length > 1).map((step) => {
-                const recipes = usableRecipes(step.name, index)
-                const current = state.recipeChoices[step.name] && recipes.some((recipe) => recipe.id === state.recipeChoices[step.name]) ? state.recipeChoices[step.name] : recipes[0].id
-                return (
-                  <label key={step.name} className="flex flex-col gap-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><ItemIcon item={itemByName.get(step.name)} size={16} />{displayName(step.name)}</span>
-                    <Select value={current} onValueChange={(value) => update({ recipeChoices: { ...state.recipeChoices, [step.name]: value } })}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-4">
+            {plan && index && (plan.steps.some((step) => usableRecipes(step.name, index).length > 1) || plan.alternatives.length > 0) && (
+              <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
+                <h2 className="text-sm font-medium">Recipes and ingredients</h2>
+                {plan.steps.filter((step) => usableRecipes(step.name, index).length > 1).map((step) => {
+                  const recipes = usableRecipes(step.name, index)
+                  const current = state.recipeChoices[step.name] && recipes.some((recipe) => recipe.id === state.recipeChoices[step.name]) ? state.recipeChoices[step.name] : recipes[0].id
+                  return (
+                    <label key={step.name} className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><ItemIcon item={itemByName.get(step.name)} size={16} />{displayName(step.name)}</span>
+                      <Select value={current} onValueChange={(value) => update({ recipeChoices: { ...state.recipeChoices, [step.name]: value } })}>
+                        <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {recipes.map((recipe) => (
+                            <SelectItem key={recipe.id} value={recipe.id}>
+                              {RECIPE_TYPE_LABELS[recipe.type]}: {recipe.ingredients.map((ingredient) => `${ingredient.quantity} ${ingredient.options.map((option) => (option.startsWith('#') ? `any ${option.slice(1).replace(/_/g, ' ')}` : displayName(option))).join(' / ')}`).join(' + ')} → {recipe.count}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  )
+                })}
+                {plan.alternatives.map((alternative) => (
+                  <label key={alternative.key} className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <span>Use for “{alternative.key.split('|').map((option) => (option.startsWith('#') ? `any ${option.slice(1).replace(/_/g, ' ')}` : displayName(option))).join(' / ')}”</span>
+                    <Select value={alternative.chosen} onValueChange={(value) => update({ ingredientChoices: { ...state.ingredientChoices, [alternative.key]: value } })}>
                       <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {recipes.map((recipe) => (
-                          <SelectItem key={recipe.id} value={recipe.id}>
-                            {RECIPE_TYPE_LABELS[recipe.type]}: {recipe.ingredients.map((ingredient) => `${ingredient.quantity} ${ingredient.options.map((option) => (option.startsWith('#') ? `any ${option.slice(1).replace(/_/g, ' ')}` : displayName(option))).join(' / ')}`).join(' + ')} → {recipe.count}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      <SelectContent>{alternative.options.map((option) => <SelectItem key={option} value={option}>{displayName(option)}</SelectItem>)}</SelectContent>
                     </Select>
                   </label>
-                )
-              })}
-              {plan.alternatives.map((alternative) => (
-                <label key={alternative.key} className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  <span>Use for “{alternative.key.split('|').map((option) => (option.startsWith('#') ? `any ${option.slice(1).replace(/_/g, ' ')}` : displayName(option))).join(' / ')}”</span>
-                  <Select value={alternative.chosen} onValueChange={(value) => update({ ingredientChoices: { ...state.ingredientChoices, [alternative.key]: value } })}>
-                    <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>{alternative.options.map((option) => <SelectItem key={option} value={option}>{displayName(option)}</SelectItem>)}</SelectContent>
-                  </Select>
-                </label>
-              ))}
-            </section>
-          )}
+                ))}
+              </section>
+            )}
 
-          <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
-            <h2 className="flex items-center gap-1.5 text-sm font-medium"><Backpack className="size-4" />Inventory (already owned)</h2>
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground" />
-              <input value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Add an item you already have…" disabled={!dataset} aria-label="Search inventory items" className={cn(fieldClass, 'pl-8')} />
-              {inventoryResults.length > 0 && (
-                <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
-                  {inventoryResults.map((item) => (
-                    <li key={item.name}>
-                      <button type="button" onClick={() => { setInventory(item.name, (state.inventory[item.name] ?? 0) + item.stackSize); setInventoryQuery('') }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"><ItemIcon item={item} /><span className="truncate">{item.displayName}</span></button>
+            <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
+              <h2 className="flex items-center gap-1.5 text-sm font-medium"><Backpack className="size-4" />Inventory (already owned)</h2>
+              <div className="relative">
+                <Search className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground" />
+                <input value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Add an item you already have…" disabled={!dataset} aria-label="Search inventory items" className={cn(fieldClass, 'pl-8')} />
+                {inventoryResults.length > 0 && (
+                  <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+                    {inventoryResults.map((item) => (
+                      <li key={item.name}>
+                        <button type="button" onClick={() => { setInventory(item.name, (state.inventory[item.name] ?? 0) + item.stackSize); setInventoryQuery('') }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"><ItemIcon item={item} /><span className="truncate">{item.displayName}</span></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {Object.keys(state.inventory).length === 0 ? (
+                <p className="text-xs text-muted-foreground">Owned items are used before anything is crafted or gathered.</p>
+              ) : (
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {Object.entries(state.inventory).map(([name, quantity]) => (
+                    <li key={name} className="flex items-center gap-2 px-2 py-1.5">
+                      <ItemIcon item={itemByName.get(name)} size={20} />
+                      <span className="min-w-0 flex-1 truncate text-sm">{displayName(name)}</span>
+                      <input type="number" min={0} max={MAX_QUANTITY} value={quantity} onChange={(event) => setInventory(name, toQuantity(event.target.value))} aria-label={`Owned ${displayName(name)}`} className={cn(fieldClass, 'w-24 text-right tabular-nums')} />
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => setInventory(name, 0)} aria-label={`Remove ${displayName(name)} from inventory`}><Trash2 /></Button>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
-            {Object.keys(state.inventory).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Owned items are used before anything is crafted or gathered.</p>
-            ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border">
-                {Object.entries(state.inventory).map(([name, quantity]) => (
-                  <li key={name} className="flex items-center gap-2 px-2 py-1.5">
-                    <ItemIcon item={itemByName.get(name)} size={20} />
-                    <span className="min-w-0 flex-1 truncate text-sm">{displayName(name)}</span>
-                    <input type="number" min={0} max={MAX_QUANTITY} value={quantity} onChange={(event) => setInventory(name, toQuantity(event.target.value))} aria-label={`Owned ${displayName(name)}`} className={cn(fieldClass, 'w-24 text-right tabular-nums')} />
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setInventory(name, 0)} aria-label={`Remove ${displayName(name)} from inventory`}><Trash2 /></Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+            </section>
+          </div>
         </div>
 
         <section className={cn('flex min-w-0 flex-col gap-3 p-4', workspaceCardClass)}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div role="tablist" aria-label="Result view" className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
+            <div role="tablist" aria-label="Result view" className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
               {VIEWS.map((entry) => (
                 <Button key={entry.id} type="button" role="tab" size="xs" variant={view === entry.id ? 'secondary' : 'ghost'} aria-selected={view === entry.id} onClick={() => setView(entry.id)}>{entry.label}</Button>
               ))}
@@ -312,12 +314,13 @@ export function MinecraftCraftingCalculatorPage() {
                 <ul className="divide-y divide-border rounded-lg border border-border">
                   {plan.materials.map((material) => {
                     const item = itemByName.get(material.name)
+                    const stacks = formatStacks(material.quantity, item?.stackSize ?? 64)
                     return (
                       <li key={material.name} className="flex items-center gap-2 px-3 py-2">
                         <ItemIcon item={item} />
                         <span className="min-w-0 flex-1 truncate text-sm">{displayName(material.name)}</span>
                         <span className="text-sm font-medium tabular-nums">{material.quantity.toLocaleString()}</span>
-                        <span className="w-28 shrink-0 text-right text-xs text-muted-foreground">{formatStacks(material.quantity, item?.stackSize ?? 64)}</span>
+                        {stacks && <span className="shrink-0 text-right text-xs text-muted-foreground">{stacks}</span>}
                       </li>
                     )
                   })}

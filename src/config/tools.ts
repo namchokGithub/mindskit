@@ -326,7 +326,8 @@ export const tools: ToolDefinition[] = [
   {
     id: "qr-code",
     name: "QR Code",
-    description: "Generate and customize a QR code with frames, shapes, and logos.",
+    description:
+      "Generate and customize a QR code with frames, shapes, and logos.",
     category: "generators",
     path: "/generators/qr-code",
     icon: QrCode,
@@ -504,25 +505,28 @@ export const tools: ToolDefinition[] = [
     category: "screen",
     path: "/screen-simulator",
     icon: MonitorPlay,
-    isNew: true,
   },
 
   // Game Toolkit
   {
     id: "minecraft-tick-calculator",
     name: "Minecraft Tick Calculator",
-    description: "Convert Minecraft game ticks and redstone ticks to seconds and minutes, with reference tables.",
+    description:
+      "Convert Minecraft game ticks and redstone ticks to seconds and minutes, with reference tables.",
     category: "game-toolkit",
     path: "/minecraft/tick-calculator",
     icon: Pickaxe,
+    isNew: true,
   },
   {
     id: "minecraft-crafting-calculator",
     name: "Minecraft Crafting Calculator",
-    description: "Pick items and amounts to get every raw material and the crafting tree for Minecraft 1.21.11.",
+    description:
+      "Pick items and amounts to get every raw material and the crafting tree for Minecraft 1.21.11.",
     category: "game-toolkit",
     path: "/minecraft/crafting-calculator",
     icon: Hammer,
+    isNew: true,
   },
 ];
 
