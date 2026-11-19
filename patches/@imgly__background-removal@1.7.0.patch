@@ -1,0 +1,612 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 74683dfccb3130e1f6430709f7a74ddbc8537620..3500168f29dc6b53d0022a8411b4cd55704fc8cd 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -83,146 +83,168 @@ var require_ndarray = __commonJS({
+       return result;
+     }
+     function compileConstructor(dtype, dimension) {
+-      var className = ["View", dimension, "d", dtype].join("");
+-      if (dimension < 0) {
+-        className = "View_Nil" + dtype;
+-      }
++      // Patched for MindsKit: ndarray normally generates these view classes with `new Function`,
++      // which a Content-Security-Policy without 'unsafe-eval' blocks. Same behavior, no eval.
+       var useGetters = dtype === "generic";
++      var CTOR_LIST = CACHED_CONSTRUCTORS[dtype];
++      var proto;
+       if (dimension === -1) {
+-        var code = "function " + className + "(a){this.data=a;};var proto=" + className + ".prototype;proto.dtype='" + dtype + "';proto.index=function(){return -1};proto.size=0;proto.dimension=-1;proto.shape=proto.stride=proto.order=[];proto.lo=proto.hi=proto.transpose=proto.step=function(){return new " + className + "(this.data);};proto.get=proto.set=function(){};proto.pick=function(){return null};return function construct_" + className + "(a){return new " + className + "(a);}";
+-        var procedure = new Function(code);
+-        return procedure();
+-      } else if (dimension === 0) {
+-        var code = "function " + className + "(a,d) {this.data = a;this.offset = d};var proto=" + className + ".prototype;proto.dtype='" + dtype + "';proto.index=function(){return this.offset};proto.dimension=0;proto.size=1;proto.shape=proto.stride=proto.order=[];proto.lo=proto.hi=proto.transpose=proto.step=function " + className + "_copy() {return new " + className + "(this.data,this.offset)};proto.pick=function " + className + "_pick(){return TrivialArray(this.data);};proto.valueOf=proto.get=function " + className + "_get(){return " + (useGetters ? "this.data.get(this.offset)" : "this.data[this.offset]") + "};proto.set=function " + className + "_set(v){return " + (useGetters ? "this.data.set(this.offset,v)" : "this.data[this.offset]=v") + "};return function construct_" + className + "(a,b,c,d){return new " + className + "(a,d)}";
+-        var procedure = new Function("TrivialArray", code);
+-        return procedure(CACHED_CONSTRUCTORS[dtype][0]);
++        var ViewNil = function(a) {
++          this.data = a;
++        };
++        proto = ViewNil.prototype;
++        proto.dtype = dtype;
++        proto.index = function() {
++          return -1;
++        };
++        proto.size = 0;
++        proto.dimension = -1;
++        proto.shape = proto.stride = proto.order = [];
++        proto.lo = proto.hi = proto.transpose = proto.step = function() {
++          return new ViewNil(this.data);
++        };
++        proto.get = proto.set = function() {
++        };
++        proto.pick = function() {
++          return null;
++        };
++        return function construct_ViewNil(a) {
++          return new ViewNil(a);
++        };
+       }
+-      var code = ["'use strict'"];
+-      var indices = iota(dimension);
+-      var args = indices.map(function(i2) {
+-        return "i" + i2;
+-      });
+-      var index_str = "this.offset+" + indices.map(function(i2) {
+-        return "this.stride[" + i2 + "]*i" + i2;
+-      }).join("+");
+-      var shapeArg = indices.map(function(i2) {
+-        return "b" + i2;
+-      }).join(",");
+-      var strideArg = indices.map(function(i2) {
+-        return "c" + i2;
+-      }).join(",");
+-      code.push(
+-        "function " + className + "(a," + shapeArg + "," + strideArg + ",d){this.data=a",
+-        "this.shape=[" + shapeArg + "]",
+-        "this.stride=[" + strideArg + "]",
+-        "this.offset=d|0}",
+-        "var proto=" + className + ".prototype",
+-        "proto.dtype='" + dtype + "'",
+-        "proto.dimension=" + dimension
+-      );
+-      code.push(
+-        "Object.defineProperty(proto,'size',{get:function " + className + "_size(){return " + indices.map(function(i2) {
+-          return "this.shape[" + i2 + "]";
+-        }).join("*"),
+-        "}})"
+-      );
++      if (dimension === 0) {
++        var View0 = function(a, d) {
++          this.data = a;
++          this.offset = d;
++        };
++        proto = View0.prototype;
++        proto.dtype = dtype;
++        proto.index = function() {
++          return this.offset;
++        };
++        proto.dimension = 0;
++        proto.size = 1;
++        proto.shape = proto.stride = proto.order = [];
++        proto.lo = proto.hi = proto.transpose = proto.step = function() {
++          return new View0(this.data, this.offset);
++        };
++        proto.pick = function() {
++          return CTOR_LIST[0](this.data);
++        };
++        proto.valueOf = proto.get = useGetters ? function() {
++          return this.data.get(this.offset);
++        } : function() {
++          return this.data[this.offset];
++        };
++        proto.set = useGetters ? function(v) {
++          return this.data.set(this.offset, v);
++        } : function(v) {
++          return this.data[this.offset] = v;
++        };
++        return function construct_View0(a, b, c, d) {
++          return new View0(a, d);
++        };
++      }
++      var View = function(a, shape, stride, d) {
++        this.data = a;
++        this.shape = shape;
++        this.stride = stride;
++        this.offset = d | 0;
++      };
++      var indexOf = function(view, args) {
++        var index = view.offset;
++        for (var k = 0; k < dimension; ++k) index += view.stride[k] * args[k];
++        return index;
++      };
++      proto = View.prototype;
++      proto.dtype = dtype;
++      proto.dimension = dimension;
++      Object.defineProperty(proto, "size", { get: function() {
++        var size = 1;
++        for (var k = 0; k < dimension; ++k) size *= this.shape[k];
++        return size;
++      } });
+       if (dimension === 1) {
+-        code.push("proto.order=[0]");
++        proto.order = [0];
+       } else {
+-        code.push("Object.defineProperty(proto,'order',{get:");
+-        if (dimension < 4) {
+-          code.push("function " + className + "_order(){");
+-          if (dimension === 2) {
+-            code.push("return (Math.abs(this.stride[0])>Math.abs(this.stride[1]))?[1,0]:[0,1]}})");
+-          } else if (dimension === 3) {
+-            code.push(
+-              "var s0=Math.abs(this.stride[0]),s1=Math.abs(this.stride[1]),s2=Math.abs(this.stride[2]);if(s0>s1){if(s1>s2){return [2,1,0];}else if(s0>s2){return [1,2,0];}else{return [1,0,2];}}else if(s0>s2){return [2,0,1];}else if(s2>s1){return [0,1,2];}else{return [0,2,1];}}})"
+-            );
++        Object.defineProperty(proto, "order", { get: order });
++      }
++      proto.set = useGetters ? function() {
++        return this.data.set(indexOf(this, arguments), arguments[dimension]);
++      } : function() {
++        return this.data[indexOf(this, arguments)] = arguments[dimension];
++      };
++      proto.get = useGetters ? function() {
++        return this.data.get(indexOf(this, arguments));
++      } : function() {
++        return this.data[indexOf(this, arguments)];
++      };
++      proto.index = function() {
++        return indexOf(this, arguments);
++      };
++      proto.hi = function() {
++        var shape = new Array(dimension);
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          shape[k] = typeof i2 !== "number" || i2 < 0 ? this.shape[k] : i2 | 0;
++        }
++        return new View(this.data, shape, this.stride.slice(), this.offset);
++      };
++      proto.lo = function() {
++        var b = this.offset, shape = this.shape.slice();
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number" && i2 >= 0) {
++            var d = i2 | 0;
++            b += this.stride[k] * d;
++            shape[k] -= d;
+           }
+-        } else {
+-          code.push("ORDER})");
+         }
+-      }
+-      code.push(
+-        "proto.set=function " + className + "_set(" + args.join(",") + ",v){"
+-      );
+-      if (useGetters) {
+-        code.push("return this.data.set(" + index_str + ",v)}");
+-      } else {
+-        code.push("return this.data[" + index_str + "]=v}");
+-      }
+-      code.push("proto.get=function " + className + "_get(" + args.join(",") + "){");
+-      if (useGetters) {
+-        code.push("return this.data.get(" + index_str + ")}");
+-      } else {
+-        code.push("return this.data[" + index_str + "]}");
+-      }
+-      code.push(
+-        "proto.index=function " + className + "_index(",
+-        args.join(),
+-        "){return " + index_str + "}"
+-      );
+-      code.push("proto.hi=function " + className + "_hi(" + args.join(",") + "){return new " + className + "(this.data," + indices.map(function(i2) {
+-        return ["(typeof i", i2, "!=='number'||i", i2, "<0)?this.shape[", i2, "]:i", i2, "|0"].join("");
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "this.stride[" + i2 + "]";
+-      }).join(",") + ",this.offset)}");
+-      var a_vars = indices.map(function(i2) {
+-        return "a" + i2 + "=this.shape[" + i2 + "]";
+-      });
+-      var c_vars = indices.map(function(i2) {
+-        return "c" + i2 + "=this.stride[" + i2 + "]";
+-      });
+-      code.push("proto.lo=function " + className + "_lo(" + args.join(",") + "){var b=this.offset,d=0," + a_vars.join(",") + "," + c_vars.join(","));
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push(
+-          "if(typeof i" + i + "==='number'&&i" + i + ">=0){d=i" + i + "|0;b+=c" + i + "*d;a" + i + "-=d}"
+-        );
+-      }
+-      code.push("return new " + className + "(this.data," + indices.map(function(i2) {
+-        return "a" + i2;
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "c" + i2;
+-      }).join(",") + ",b)}");
+-      code.push("proto.step=function " + className + "_step(" + args.join(",") + "){var " + indices.map(function(i2) {
+-        return "a" + i2 + "=this.shape[" + i2 + "]";
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "b" + i2 + "=this.stride[" + i2 + "]";
+-      }).join(",") + ",c=this.offset,d=0,ceil=Math.ceil");
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push(
+-          "if(typeof i" + i + "==='number'){d=i" + i + "|0;if(d<0){c+=b" + i + "*(a" + i + "-1);a" + i + "=ceil(-a" + i + "/d)}else{a" + i + "=ceil(a" + i + "/d)}b" + i + "*=d}"
+-        );
+-      }
+-      code.push("return new " + className + "(this.data," + indices.map(function(i2) {
+-        return "a" + i2;
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "b" + i2;
+-      }).join(",") + ",c)}");
+-      var tShape = new Array(dimension);
+-      var tStride = new Array(dimension);
+-      for (var i = 0; i < dimension; ++i) {
+-        tShape[i] = "a[i" + i + "]";
+-        tStride[i] = "b[i" + i + "]";
+-      }
+-      code.push(
+-        "proto.transpose=function " + className + "_transpose(" + args + "){" + args.map(function(n, idx) {
+-          return n + "=(" + n + "===undefined?" + idx + ":" + n + "|0)";
+-        }).join(";"),
+-        "var a=this.shape,b=this.stride;return new " + className + "(this.data," + tShape.join(",") + "," + tStride.join(",") + ",this.offset)}"
+-      );
+-      code.push("proto.pick=function " + className + "_pick(" + args + "){var a=[],b=[],c=this.offset");
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push("if(typeof i" + i + "==='number'&&i" + i + ">=0){c=(c+this.stride[" + i + "]*i" + i + ")|0}else{a.push(this.shape[" + i + "]);b.push(this.stride[" + i + "])}");
+-      }
+-      code.push("var ctor=CTOR_LIST[a.length+1];return ctor(this.data,a,b,c)}");
+-      code.push("return function construct_" + className + "(data,shape,stride,offset){return new " + className + "(data," + indices.map(function(i2) {
+-        return "shape[" + i2 + "]";
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "stride[" + i2 + "]";
+-      }).join(",") + ",offset)}");
+-      var procedure = new Function("CTOR_LIST", "ORDER", code.join("\n"));
+-      return procedure(CACHED_CONSTRUCTORS[dtype], order);
++        return new View(this.data, shape, this.stride.slice(), b);
++      };
++      proto.step = function() {
++        var shape = this.shape.slice(), stride = this.stride.slice(), c = this.offset;
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number") {
++            var d = i2 | 0;
++            if (d < 0) {
++              c += stride[k] * (shape[k] - 1);
++              shape[k] = Math.ceil(-shape[k] / d);
++            } else {
++              shape[k] = Math.ceil(shape[k] / d);
++            }
++            stride[k] *= d;
++          }
++        }
++        return new View(this.data, shape, stride, c);
++      };
++      proto.transpose = function() {
++        var shape = new Array(dimension), stride = new Array(dimension);
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k] === void 0 ? k : arguments[k] | 0;
++          shape[k] = this.shape[i2];
++          stride[k] = this.stride[i2];
++        }
++        return new View(this.data, shape, stride, this.offset);
++      };
++      proto.pick = function() {
++        var a = [], b = [], c = this.offset;
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number" && i2 >= 0) {
++            c = c + this.stride[k] * i2 | 0;
++          } else {
++            a.push(this.shape[k]);
++            b.push(this.stride[k]);
++          }
++        }
++        var ctor = CTOR_LIST[a.length + 1];
++        return ctor(this.data, a, b, c);
++      };
++      return function construct_View(data, shape, stride, offset) {
++        return new View(data, Array.prototype.slice.call(shape, 0, dimension), Array.prototype.slice.call(stride, 0, dimension), offset);
++      };
+     }
+     function arrayDType(data) {
+       if (isBuffer(data)) {
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0ea9fb5118c12e92fe3168a28aa8f494e6a18eb5..b2c2c70702d4c0bcd1485ad7f8f0e7f05a56db9e 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -78,146 +78,168 @@ var require_ndarray = __commonJS({
+       return result;
+     }
+     function compileConstructor(dtype, dimension) {
+-      var className = ["View", dimension, "d", dtype].join("");
+-      if (dimension < 0) {
+-        className = "View_Nil" + dtype;
+-      }
++      // Patched for MindsKit: ndarray normally generates these view classes with `new Function`,
++      // which a Content-Security-Policy without 'unsafe-eval' blocks. Same behavior, no eval.
+       var useGetters = dtype === "generic";
++      var CTOR_LIST = CACHED_CONSTRUCTORS[dtype];
++      var proto;
+       if (dimension === -1) {
+-        var code = "function " + className + "(a){this.data=a;};var proto=" + className + ".prototype;proto.dtype='" + dtype + "';proto.index=function(){return -1};proto.size=0;proto.dimension=-1;proto.shape=proto.stride=proto.order=[];proto.lo=proto.hi=proto.transpose=proto.step=function(){return new " + className + "(this.data);};proto.get=proto.set=function(){};proto.pick=function(){return null};return function construct_" + className + "(a){return new " + className + "(a);}";
+-        var procedure = new Function(code);
+-        return procedure();
+-      } else if (dimension === 0) {
+-        var code = "function " + className + "(a,d) {this.data = a;this.offset = d};var proto=" + className + ".prototype;proto.dtype='" + dtype + "';proto.index=function(){return this.offset};proto.dimension=0;proto.size=1;proto.shape=proto.stride=proto.order=[];proto.lo=proto.hi=proto.transpose=proto.step=function " + className + "_copy() {return new " + className + "(this.data,this.offset)};proto.pick=function " + className + "_pick(){return TrivialArray(this.data);};proto.valueOf=proto.get=function " + className + "_get(){return " + (useGetters ? "this.data.get(this.offset)" : "this.data[this.offset]") + "};proto.set=function " + className + "_set(v){return " + (useGetters ? "this.data.set(this.offset,v)" : "this.data[this.offset]=v") + "};return function construct_" + className + "(a,b,c,d){return new " + className + "(a,d)}";
+-        var procedure = new Function("TrivialArray", code);
+-        return procedure(CACHED_CONSTRUCTORS[dtype][0]);
++        var ViewNil = function(a) {
++          this.data = a;
++        };
++        proto = ViewNil.prototype;
++        proto.dtype = dtype;
++        proto.index = function() {
++          return -1;
++        };
++        proto.size = 0;
++        proto.dimension = -1;
++        proto.shape = proto.stride = proto.order = [];
++        proto.lo = proto.hi = proto.transpose = proto.step = function() {
++          return new ViewNil(this.data);
++        };
++        proto.get = proto.set = function() {
++        };
++        proto.pick = function() {
++          return null;
++        };
++        return function construct_ViewNil(a) {
++          return new ViewNil(a);
++        };
+       }
+-      var code = ["'use strict'"];
+-      var indices = iota(dimension);
+-      var args = indices.map(function(i2) {
+-        return "i" + i2;
+-      });
+-      var index_str = "this.offset+" + indices.map(function(i2) {
+-        return "this.stride[" + i2 + "]*i" + i2;
+-      }).join("+");
+-      var shapeArg = indices.map(function(i2) {
+-        return "b" + i2;
+-      }).join(",");
+-      var strideArg = indices.map(function(i2) {
+-        return "c" + i2;
+-      }).join(",");
+-      code.push(
+-        "function " + className + "(a," + shapeArg + "," + strideArg + ",d){this.data=a",
+-        "this.shape=[" + shapeArg + "]",
+-        "this.stride=[" + strideArg + "]",
+-        "this.offset=d|0}",
+-        "var proto=" + className + ".prototype",
+-        "proto.dtype='" + dtype + "'",
+-        "proto.dimension=" + dimension
+-      );
+-      code.push(
+-        "Object.defineProperty(proto,'size',{get:function " + className + "_size(){return " + indices.map(function(i2) {
+-          return "this.shape[" + i2 + "]";
+-        }).join("*"),
+-        "}})"
+-      );
++      if (dimension === 0) {
++        var View0 = function(a, d) {
++          this.data = a;
++          this.offset = d;
++        };
++        proto = View0.prototype;
++        proto.dtype = dtype;
++        proto.index = function() {
++          return this.offset;
++        };
++        proto.dimension = 0;
++        proto.size = 1;
++        proto.shape = proto.stride = proto.order = [];
++        proto.lo = proto.hi = proto.transpose = proto.step = function() {
++          return new View0(this.data, this.offset);
++        };
++        proto.pick = function() {
++          return CTOR_LIST[0](this.data);
++        };
++        proto.valueOf = proto.get = useGetters ? function() {
++          return this.data.get(this.offset);
++        } : function() {
++          return this.data[this.offset];
++        };
++        proto.set = useGetters ? function(v) {
++          return this.data.set(this.offset, v);
++        } : function(v) {
++          return this.data[this.offset] = v;
++        };
++        return function construct_View0(a, b, c, d) {
++          return new View0(a, d);
++        };
++      }
++      var View = function(a, shape, stride, d) {
++        this.data = a;
++        this.shape = shape;
++        this.stride = stride;
++        this.offset = d | 0;
++      };
++      var indexOf = function(view, args) {
++        var index = view.offset;
++        for (var k = 0; k < dimension; ++k) index += view.stride[k] * args[k];
++        return index;
++      };
++      proto = View.prototype;
++      proto.dtype = dtype;
++      proto.dimension = dimension;
++      Object.defineProperty(proto, "size", { get: function() {
++        var size = 1;
++        for (var k = 0; k < dimension; ++k) size *= this.shape[k];
++        return size;
++      } });
+       if (dimension === 1) {
+-        code.push("proto.order=[0]");
++        proto.order = [0];
+       } else {
+-        code.push("Object.defineProperty(proto,'order',{get:");
+-        if (dimension < 4) {
+-          code.push("function " + className + "_order(){");
+-          if (dimension === 2) {
+-            code.push("return (Math.abs(this.stride[0])>Math.abs(this.stride[1]))?[1,0]:[0,1]}})");
+-          } else if (dimension === 3) {
+-            code.push(
+-              "var s0=Math.abs(this.stride[0]),s1=Math.abs(this.stride[1]),s2=Math.abs(this.stride[2]);if(s0>s1){if(s1>s2){return [2,1,0];}else if(s0>s2){return [1,2,0];}else{return [1,0,2];}}else if(s0>s2){return [2,0,1];}else if(s2>s1){return [0,1,2];}else{return [0,2,1];}}})"
+-            );
++        Object.defineProperty(proto, "order", { get: order });
++      }
++      proto.set = useGetters ? function() {
++        return this.data.set(indexOf(this, arguments), arguments[dimension]);
++      } : function() {
++        return this.data[indexOf(this, arguments)] = arguments[dimension];
++      };
++      proto.get = useGetters ? function() {
++        return this.data.get(indexOf(this, arguments));
++      } : function() {
++        return this.data[indexOf(this, arguments)];
++      };
++      proto.index = function() {
++        return indexOf(this, arguments);
++      };
++      proto.hi = function() {
++        var shape = new Array(dimension);
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          shape[k] = typeof i2 !== "number" || i2 < 0 ? this.shape[k] : i2 | 0;
++        }
++        return new View(this.data, shape, this.stride.slice(), this.offset);
++      };
++      proto.lo = function() {
++        var b = this.offset, shape = this.shape.slice();
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number" && i2 >= 0) {
++            var d = i2 | 0;
++            b += this.stride[k] * d;
++            shape[k] -= d;
+           }
+-        } else {
+-          code.push("ORDER})");
+         }
+-      }
+-      code.push(
+-        "proto.set=function " + className + "_set(" + args.join(",") + ",v){"
+-      );
+-      if (useGetters) {
+-        code.push("return this.data.set(" + index_str + ",v)}");
+-      } else {
+-        code.push("return this.data[" + index_str + "]=v}");
+-      }
+-      code.push("proto.get=function " + className + "_get(" + args.join(",") + "){");
+-      if (useGetters) {
+-        code.push("return this.data.get(" + index_str + ")}");
+-      } else {
+-        code.push("return this.data[" + index_str + "]}");
+-      }
+-      code.push(
+-        "proto.index=function " + className + "_index(",
+-        args.join(),
+-        "){return " + index_str + "}"
+-      );
+-      code.push("proto.hi=function " + className + "_hi(" + args.join(",") + "){return new " + className + "(this.data," + indices.map(function(i2) {
+-        return ["(typeof i", i2, "!=='number'||i", i2, "<0)?this.shape[", i2, "]:i", i2, "|0"].join("");
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "this.stride[" + i2 + "]";
+-      }).join(",") + ",this.offset)}");
+-      var a_vars = indices.map(function(i2) {
+-        return "a" + i2 + "=this.shape[" + i2 + "]";
+-      });
+-      var c_vars = indices.map(function(i2) {
+-        return "c" + i2 + "=this.stride[" + i2 + "]";
+-      });
+-      code.push("proto.lo=function " + className + "_lo(" + args.join(",") + "){var b=this.offset,d=0," + a_vars.join(",") + "," + c_vars.join(","));
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push(
+-          "if(typeof i" + i + "==='number'&&i" + i + ">=0){d=i" + i + "|0;b+=c" + i + "*d;a" + i + "-=d}"
+-        );
+-      }
+-      code.push("return new " + className + "(this.data," + indices.map(function(i2) {
+-        return "a" + i2;
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "c" + i2;
+-      }).join(",") + ",b)}");
+-      code.push("proto.step=function " + className + "_step(" + args.join(",") + "){var " + indices.map(function(i2) {
+-        return "a" + i2 + "=this.shape[" + i2 + "]";
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "b" + i2 + "=this.stride[" + i2 + "]";
+-      }).join(",") + ",c=this.offset,d=0,ceil=Math.ceil");
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push(
+-          "if(typeof i" + i + "==='number'){d=i" + i + "|0;if(d<0){c+=b" + i + "*(a" + i + "-1);a" + i + "=ceil(-a" + i + "/d)}else{a" + i + "=ceil(a" + i + "/d)}b" + i + "*=d}"
+-        );
+-      }
+-      code.push("return new " + className + "(this.data," + indices.map(function(i2) {
+-        return "a" + i2;
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "b" + i2;
+-      }).join(",") + ",c)}");
+-      var tShape = new Array(dimension);
+-      var tStride = new Array(dimension);
+-      for (var i = 0; i < dimension; ++i) {
+-        tShape[i] = "a[i" + i + "]";
+-        tStride[i] = "b[i" + i + "]";
+-      }
+-      code.push(
+-        "proto.transpose=function " + className + "_transpose(" + args + "){" + args.map(function(n, idx) {
+-          return n + "=(" + n + "===undefined?" + idx + ":" + n + "|0)";
+-        }).join(";"),
+-        "var a=this.shape,b=this.stride;return new " + className + "(this.data," + tShape.join(",") + "," + tStride.join(",") + ",this.offset)}"
+-      );
+-      code.push("proto.pick=function " + className + "_pick(" + args + "){var a=[],b=[],c=this.offset");
+-      for (var i = 0; i < dimension; ++i) {
+-        code.push("if(typeof i" + i + "==='number'&&i" + i + ">=0){c=(c+this.stride[" + i + "]*i" + i + ")|0}else{a.push(this.shape[" + i + "]);b.push(this.stride[" + i + "])}");
+-      }
+-      code.push("var ctor=CTOR_LIST[a.length+1];return ctor(this.data,a,b,c)}");
+-      code.push("return function construct_" + className + "(data,shape,stride,offset){return new " + className + "(data," + indices.map(function(i2) {
+-        return "shape[" + i2 + "]";
+-      }).join(",") + "," + indices.map(function(i2) {
+-        return "stride[" + i2 + "]";
+-      }).join(",") + ",offset)}");
+-      var procedure = new Function("CTOR_LIST", "ORDER", code.join("\n"));
+-      return procedure(CACHED_CONSTRUCTORS[dtype], order);
++        return new View(this.data, shape, this.stride.slice(), b);
++      };
++      proto.step = function() {
++        var shape = this.shape.slice(), stride = this.stride.slice(), c = this.offset;
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number") {
++            var d = i2 | 0;
++            if (d < 0) {
++              c += stride[k] * (shape[k] - 1);
++              shape[k] = Math.ceil(-shape[k] / d);
++            } else {
++              shape[k] = Math.ceil(shape[k] / d);
++            }
++            stride[k] *= d;
++          }
++        }
++        return new View(this.data, shape, stride, c);
++      };
++      proto.transpose = function() {
++        var shape = new Array(dimension), stride = new Array(dimension);
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k] === void 0 ? k : arguments[k] | 0;
++          shape[k] = this.shape[i2];
++          stride[k] = this.stride[i2];
++        }
++        return new View(this.data, shape, stride, this.offset);
++      };
++      proto.pick = function() {
++        var a = [], b = [], c = this.offset;
++        for (var k = 0; k < dimension; ++k) {
++          var i2 = arguments[k];
++          if (typeof i2 === "number" && i2 >= 0) {
++            c = c + this.stride[k] * i2 | 0;
++          } else {
++            a.push(this.shape[k]);
++            b.push(this.stride[k]);
++          }
++        }
++        var ctor = CTOR_LIST[a.length + 1];
++        return ctor(this.data, a, b, c);
++      };
++      return function construct_View(data, shape, stride, offset) {
++        return new View(data, Array.prototype.slice.call(shape, 0, dimension), Array.prototype.slice.call(stride, 0, dimension), offset);
++      };
+     }
+     function arrayDType(data) {
+       if (isBuffer(data)) {

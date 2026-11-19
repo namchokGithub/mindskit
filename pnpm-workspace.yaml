@@ -1,2 +1,4 @@
 allowBuilds:
   protobufjs: false
+patchedDependencies:
+  '@imgly/background-removal@1.7.0': patches/@imgly__background-removal@1.7.0.patch
