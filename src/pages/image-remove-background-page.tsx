@@ -46,11 +46,16 @@ export function ImageRemoveBackgroundPage() {
   }, [imageSrc, resultUrl])
 
   // Revoke the latest object URLs when leaving the page; replacements are revoked where they happen.
-  useEffect(() => () => {
-    mountedRef.current = false
-    const { imageSrc: latestImageSrc, resultUrl: latestResultUrl } = objectUrlsRef.current
-    if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
-    if (latestResultUrl) URL.revokeObjectURL(latestResultUrl)
+  // The flag is set again on every mount: StrictMode runs mount → cleanup → mount in development,
+  // and a flag left false would silently drop every result.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      const { imageSrc: latestImageSrc, resultUrl: latestResultUrl } = objectUrlsRef.current
+      if (latestImageSrc) URL.revokeObjectURL(latestImageSrc)
+      if (latestResultUrl) URL.revokeObjectURL(latestResultUrl)
+    }
   }, [])
 
   const handleFile = (nextFile: File) => {
