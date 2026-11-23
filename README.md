@@ -81,6 +81,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Image Crop with freeform and preset aspect ratios, exact crop size in pixels, output-size presets (social, screen/video, avatar/icon, print) or a custom output size, 90° rotation (the crop turns with the image), screen-oriented horizontal/vertical flips, free straightening up to ±45°, a rule-of-thirds grid, a live preview, and a full-size preview dialog; PNG/JPEG/WebP and similar up to 20 MiB and 10,000 px per side
 - Remove Background using an in-browser AI model, for PNG, JPEG, or WebP up to 20 MiB and 10,000 px per side, with edge refinement (edge detail, softness, shift edge, feather, despill), a Restore/Erase brush with hardness, undo/redo, zoom and pan, and full-resolution PNG export
 - Screenshot Beautifier: compose a PNG/JPEG/WebP screenshot with a solid or gradient background, padding, radius, shadow, canvas-size preset, generic browser/device frame chrome, and perspective tilt, then export PNG/JPG at up to 2x resolution or copy the result to the clipboard
+- Send to: pass a result from Remove Background, Image Crop, Image Resize, or Screenshot Beautifier to another image tool (for example Remove Background → Crop → Resize) as a lossless PNG, kept only in memory; Favicon Generator can receive images. Resize warns when a transparent image would be exported as JPEG
 
 ### Screen Simulator
 

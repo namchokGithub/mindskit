@@ -1,12 +1,17 @@
 import { Download, Eraser, ImagePlus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { ReceivedImageNote } from '@/components/tool/send-to-image-tool'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
 import { FAVICON_SIZES, buildFaviconIco, renderFaviconPng } from '@/features/images/favicon'
 import { MAX_IMAGE_DIMENSION, validateImageForResize, type ImageSize } from '@/features/images/resize'
+import { handoffValidationInput } from '@/features/images/handoff'
+import { useImageHandoff } from '@/hooks/use-image-handoff'
 import { cn } from '@/lib/utils'
+
+const PAGE_PATH = '/images/favicon-generator'
 
 interface FaviconPreview {
   size: number
@@ -50,12 +55,13 @@ export function FaviconGeneratorPage() {
     if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current)
   }, [])
 
-  const handleFile = (nextFile: File) => {
-    const validationError = validateImageForResize(nextFile)
+  const handleFile = (nextFile: File, received = false) => {
+    const validationError = validateImageForResize(handoffValidationInput(nextFile, received))
     if (validationError) {
       setError(validationError)
       return
     }
+    dismissReceived()
     if (imageUrl) URL.revokeObjectURL(imageUrl)
     replacePreviews([])
     setFile(nextFile)
@@ -71,7 +77,10 @@ export function FaviconGeneratorPage() {
     setImageUrl('')
     setError('')
     setDownloaded(false)
+    dismissReceived()
   }
+
+  const { receivedFrom, dismiss: dismissReceived } = useImageHandoff(PAGE_PATH, (nextFile) => handleFile(nextFile, true))
 
   const renderPreviews = async (image: HTMLImageElement) => {
     const size: ImageSize = { width: image.naturalWidth, height: image.naturalHeight }
@@ -125,6 +134,7 @@ export function FaviconGeneratorPage() {
         <Button type="button" variant="outline" onClick={clear} disabled={!file || busy}><Eraser />Clear</Button>
       </div>
 
+      <ReceivedImageNote from={receivedFrom} onDismiss={dismissReceived} />
       <ToolStatus state={error ? 'invalid' : downloaded ? 'valid' : 'idle'} message={error || undefined} validLabel="favicon.ico downloaded" />
 
       {!file ? (

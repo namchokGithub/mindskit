@@ -179,3 +179,9 @@ export function resizeToBlob(source: CanvasImageSource, sourceSize: ImageSize, s
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Failed to export the resized image.'))), mimeType, quality)
   })
 }
+
+/** True when any pixel of RGBA data is not fully opaque (used to warn before a JPEG export fills it with white). */
+export function hasTransparentPixel(rgba: ArrayLike<number>): boolean {
+  for (let i = 3; i < rgba.length; i += 4) if (rgba[i] < 255) return true
+  return false
+}

@@ -48,6 +48,7 @@ ad-hoc dashed boxes. Editors keep their own placeholder text ("Result will appea
 - Results appear in an output pane (`WorkspacePane tone="output"`) with its actions (copy, view mode) in the pane header.
 - Rendered previews (not editors) are wrapped in `ResultReveal`, which fades and slides in by 4 px when a new result appears.
 - Status and warnings go below the workspace with `ToolStatus` and warning notes, never inside the result text.
+- Image results add `SendToImageTool` next to Download, and image pages that accept files use `useImageHandoff` plus `ReceivedImageNote` so results can move between image tools.
 
 ## Cards and focus
 

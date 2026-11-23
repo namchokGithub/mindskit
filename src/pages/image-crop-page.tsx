@@ -1,6 +1,7 @@
 import { Download, Eraser, Eye, FlipHorizontal2, FlipVertical2, Grid3x3, ImagePlus, RotateCcw, RotateCw, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
+import { ReceivedImageNote, SendToImageTool } from '@/components/tool/send-to-image-tool'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
@@ -34,8 +35,12 @@ import {
   type ImageBounds,
   type ImageTransform,
 } from '@/features/images/crop'
+import { handoffValidationInput, toHandoffFile } from '@/features/images/handoff'
 import { resolveExportedMimeType } from '@/features/images/resize'
+import { useImageHandoff } from '@/hooks/use-image-handoff'
 import { cn } from '@/lib/utils'
+
+const PAGE_PATH = '/images/crop'
 
 const RATIO_OPTIONS: { value: string; label: string; ratio: number | null }[] = [
   { value: 'free', label: 'Freeform', ratio: null },
@@ -156,12 +161,13 @@ export function ImageCropPage() {
     return nextRatio ? applyAspectRatio(inset, nextRatio, bounds) : clampCropRect(inset, bounds)
   }
 
-  const handleFile = (file: File) => {
-    const fileError = validateCropFile(file)
+  const handleFile = (file: File, received = false) => {
+    const fileError = validateCropFile(handoffValidationInput(file, received))
     if (fileError) {
       setError(fileError)
       return
     }
+    dismissReceived()
     if (imageSrc) URL.revokeObjectURL(imageSrc)
     clearPreview()
     setError('')
@@ -204,7 +210,10 @@ export function ImageCropPage() {
     setCropRect(null)
     setTransform(IDENTITY_TRANSFORM)
     setError('')
+    dismissReceived()
   }
+
+  const { receivedFrom, dismiss: dismissReceived } = useImageHandoff(PAGE_PATH, (file) => handleFile(file, true))
 
   const applyRatio = (nextRatio: number | null) => {
     if (cropRect && cropBounds) setCropRect(applyAspectRatio(cropRect, nextRatio, cropBounds))
@@ -317,15 +326,21 @@ export function ImageCropPage() {
     dragRef.current = null
   }
 
-  const renderResult = async (): Promise<CropResult | null> => {
+  /** Renders the crop; `mimeType` defaults to the input's type (PNG for "Send to"). */
+  const renderBlob = async (mimeType = resolveExportMimeType(fileType)): Promise<Blob | null> => {
     if (!imgRef.current || !cropRect || !naturalSize || !safeRect || !outputSize) return null
     if (outputError) {
       setError(outputError)
       return null
     }
-    const mimeType = resolveExportMimeType(fileType)
     const rectInBounding = { ...cropRect, x: safeRect.x + cropRect.x, y: safeRect.y + cropRect.y }
-    const blob = await renderCropToBlob(imgRef.current, naturalSize, transform, rectInBounding, outputSize, mimeType, mimeType === 'image/png' ? undefined : 0.92)
+    return renderCropToBlob(imgRef.current, naturalSize, transform, rectInBounding, outputSize, mimeType, mimeType === 'image/png' ? undefined : 0.92)
+  }
+
+  const renderResult = async (): Promise<CropResult | null> => {
+    const mimeType = resolveExportMimeType(fileType)
+    const blob = await renderBlob(mimeType)
+    if (!blob || !outputSize) return null
     return { url: URL.createObjectURL(blob), filename: exportFileName(fileName, resolveExportedMimeType(mimeType, blob.type)), size: outputSize, bytes: blob.size }
   }
 
@@ -383,6 +398,7 @@ export function ImageCropPage() {
         </Button>
       </div>
 
+      <ReceivedImageNote from={receivedFrom} onDismiss={dismissReceived} />
       <ToolStatus state={error ? 'invalid' : 'idle'} message={error} />
 
       {!imageSrc ? (
@@ -564,6 +580,15 @@ export function ImageCropPage() {
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => void runExport('preview')} disabled={!ready || busy || Boolean(outputError)}><Eye />Preview</Button>
                 <Button type="button" onClick={() => void runExport('download')} disabled={!ready || busy || Boolean(outputError)}><Download />Download</Button>
+                <SendToImageTool
+                  currentPath={PAGE_PATH}
+                  size="default"
+                  disabled={!ready || busy || Boolean(outputError)}
+                  getFile={async () => {
+                    const blob = await renderBlob('image/png')
+                    return blob ? toHandoffFile(blob, exportFileName(fileName, 'image/png')) : null
+                  }}
+                />
               </div>
               {outputError && !customError && <p className="text-xs text-destructive">{outputError}</p>}
             </section>

@@ -1,6 +1,7 @@
 import { Download, Eraser, ImagePlus, Plus, Shrink, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { ReceivedImageNote, SendToImageTool } from '@/components/tool/send-to-image-tool'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import {
   canAddResizeJob,
   encoderFallbackMessage,
   exportResizeFileName,
+  hasTransparentPixel,
   initialPixelResizeInputs,
   lockPixelResizeInputs,
   resolveExportedMimeType,
@@ -21,7 +23,11 @@ import {
   type ImageSize,
   type ResizeFormat,
 } from '@/features/images/resize'
+import { handoffValidationInput, toHandoffFile } from '@/features/images/handoff'
+import { useImageHandoff } from '@/hooks/use-image-handoff'
 import { cn } from '@/lib/utils'
+
+const PAGE_PATH = '/images/resize'
 
 type ResizeMode = 'pixels' | 'percentage'
 type ChangedDimension = 'width' | 'height'
@@ -55,6 +61,20 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+/** Checks a downscaled copy for transparency; averaging keeps any transparent pixel below full opacity. */
+function imageHasTransparency(image: HTMLImageElement): boolean {
+  const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight))
+  const width = Math.max(1, Math.round(image.naturalWidth * scale))
+  const height = Math.max(1, Math.round(image.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) return false
+  context.drawImage(image, 0, 0, width, height)
+  return hasTransparentPixel(context.getImageData(0, 0, width, height).data)
+}
+
 function download(url: string, filename: string) {
   const link = document.createElement('a')
   link.href = url
@@ -78,6 +98,7 @@ export function ImageResizePage() {
   const [warning, setWarning] = useState('')
   const [progress, setProgress] = useState<number | null>(null)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [hasTransparency, setHasTransparency] = useState(false)
 
   const imageRef = useRef<HTMLImageElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -100,12 +121,14 @@ export function ImageResizePage() {
     setWarning('')
   }
 
-  const handleFile = (nextFile: File) => {
-    const validationError = validateImageForResize(nextFile)
+  const handleFile = (nextFile: File, received = false) => {
+    const validationError = validateImageForResize(handoffValidationInput(nextFile, received))
     if (validationError) {
       setError(validationError)
       return
     }
+    dismissReceived()
+    setHasTransparency(false)
     if (imageUrl) URL.revokeObjectURL(imageUrl)
     clearResults()
     setFile(nextFile)
@@ -128,7 +151,11 @@ export function ImageResizePage() {
     setOriginalSize(null)
     setError('')
     setProgress(null)
+    setHasTransparency(false)
+    dismissReceived()
   }
+
+  const { receivedFrom, dismiss: dismissReceived } = useImageHandoff(PAGE_PATH, (nextFile) => handleFile(nextFile, true))
 
   const updateJob = (id: number, patch: Partial<ResizeJob>) => {
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, ...patch } : job)))
@@ -177,6 +204,12 @@ export function ImageResizePage() {
       return
     }
     setOriginalSize(size)
+    // JPEG sources cannot be transparent; drawing can fail on exotic images, which only skips the warning.
+    try {
+      setHasTransparency(file?.type !== 'image/jpeg' && imageHasTransparency(image))
+    } catch {
+      setHasTransparency(false)
+    }
     setJobs((current) => current.map((job) => {
       if (job.mode !== 'pixels') return job
       const dimensions = initialPixelResizeInputs(size, job.width, job.height)
@@ -235,6 +268,14 @@ export function ImageResizePage() {
     }
   }
 
+  /** Re-renders a result size as PNG for "Send to", so a JPEG/WebP export does not lose quality again. */
+  const sendResult = async (result: ResizeResult) => {
+    if (!file || !originalSize || !imageRef.current) return null
+    const blob = await resizeToBlob(imageRef.current, originalSize, result.size, 'image/png')
+    return toHandoffFile(blob, exportResizeFileName(file.name, result.size, 'image/png'))
+  }
+
+  const jpegLosesTransparency = hasTransparency && file !== null && resolveResizeMimeType(file.type, format) === 'image/jpeg'
   const qualityEnabled = format === 'jpeg' || format === 'webp' || (format === 'original' && file?.type !== 'image/png')
   const exportDisabled = !file || !originalSize || progress !== null
 
@@ -252,6 +293,7 @@ export function ImageResizePage() {
       </div>
 
       <ToolStatus state={error ? 'invalid' : results.length ? 'valid' : 'idle'} message={error || undefined} validLabel={`Exported ${results.length} size${results.length === 1 ? '' : 's'} successfully`} />
+      <ReceivedImageNote from={receivedFrom} onDismiss={dismissReceived} />
       {warning && <p role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-3.5 py-2.5 text-sm text-warning">{warning}</p>}
 
       {!file ? (
@@ -283,6 +325,7 @@ export function ImageResizePage() {
               <label className="text-xs text-muted-foreground">Quality {quality}%<input type="range" min="1" max="100" value={quality} onChange={(event) => { setQuality(event.target.value); clearResults() }} disabled={!qualityEnabled || progress !== null} className="mt-2 block w-32 accent-primary" /></label>
               <label className="flex items-center gap-2 pb-1 text-xs text-muted-foreground"><Checkbox checked={keepAspectRatio} onCheckedChange={(value) => changeKeepAspectRatio(value === true)} disabled={progress !== null} />Keep aspect ratio</label>
             </div>
+            {jpegLosesTransparency && <p role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">This image has transparent areas. JPEG cannot store transparency, so they will be filled with white. Choose PNG or WebP to keep them.</p>}
 
             <div className="overflow-x-auto rounded-lg border border-border">
               <div className="min-w-[38rem] divide-y divide-border">
@@ -296,7 +339,7 @@ export function ImageResizePage() {
 
             <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { setJobs((current) => (canAddResizeJob(current.length) ? [...current, newJob(nextJobId)] : current)); setNextJobId((current) => current + 1); clearResults() }} disabled={progress !== null || !canAddResizeJob(jobs.length)}><Plus />Add size</Button><Button type="button" onClick={() => void runExport()} disabled={exportDisabled}><Shrink />{progress === null ? `Export ${jobs.length} size${jobs.length === 1 ? '' : 's'}` : `Exporting ${progress}/${jobs.length}…`}</Button></div>
 
-            {results.length > 0 && <div className="min-h-0 overflow-auto rounded-lg border border-border"><div className="border-b border-border bg-secondary/50 px-3 py-2 text-sm font-medium">Downloads</div>{results.map((result) => <div key={result.id} className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-0"><span className="min-w-0 flex-1 truncate text-sm">{result.filename}</span><span className="shrink-0 text-xs text-muted-foreground">{result.size.width} × {result.size.height} · {formatBytes(result.bytes)}</span><Button type="button" size="sm" variant="outline" onClick={() => download(result.url, result.filename)}><Download />Download</Button></div>)}</div>}
+            {results.length > 0 && <div className="min-h-0 overflow-auto rounded-lg border border-border"><div className="border-b border-border bg-secondary/50 px-3 py-2 text-sm font-medium">Downloads</div>{results.map((result) => <div key={result.id} className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-0"><span className="min-w-0 flex-1 truncate text-sm">{result.filename}</span><span className="shrink-0 text-xs text-muted-foreground">{result.size.width} × {result.size.height} · {formatBytes(result.bytes)}</span><Button type="button" size="sm" variant="outline" onClick={() => download(result.url, result.filename)}><Download />Download</Button><SendToImageTool currentPath={PAGE_PATH} disabled={progress !== null} getFile={() => sendResult(result)} /></div>)}</div>}
           </section>
         </div>
       )}

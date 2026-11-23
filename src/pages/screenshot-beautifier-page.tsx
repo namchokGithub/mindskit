@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Download, ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 
+import { ReceivedImageNote, SendToImageTool } from "@/components/tool/send-to-image-tool";
 import { ToolPageHeader } from "@/components/tool/tool-page-header";
 import { ToolStatus } from "@/components/tool/tool-status";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { usePersistedInput } from "@/hooks/use-persisted-input";
 import { useSaveLocally } from "@/hooks/use-save-locally";
+import { useImageHandoff } from "@/hooks/use-image-handoff";
+import { handoffValidationInput, toHandoffFile } from "@/features/images/handoff";
 import {
   backgroundCss,
   DEFAULT_DESIGN,
@@ -52,6 +55,8 @@ import {
   validateScreenshotFile,
 } from "@/features/screenshot-beautifier/image";
 import { cn } from "@/lib/utils";
+
+const PAGE_PATH = "/images/screenshot-beautifier";
 
 export function ScreenshotBeautifierPage() {
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -178,8 +183,10 @@ export function ScreenshotBeautifierPage() {
 
   const resetToDefaults = () => setDesign(resetDesign());
 
-  const handleFile = async (file: File) => {
-    const validationError = validateScreenshotFile(file);
+  const handleFile = async (file: File, received = false) => {
+    const validationError = validateScreenshotFile(
+      handoffValidationInput(file, received),
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -199,6 +206,7 @@ export function ScreenshotBeautifierPage() {
       return;
     }
     if (screenshotUrl) URL.revokeObjectURL(screenshotUrl);
+    if (!received) dismissReceived();
     setScreenshotFile(file);
     setScreenshotUrl(URL.createObjectURL(file));
     setNaturalSize(size);
@@ -211,6 +219,27 @@ export function ScreenshotBeautifierPage() {
     setScreenshotUrl("");
     setNaturalSize(null);
     setError("");
+    dismissReceived();
+  };
+
+  const { receivedFrom, dismiss: dismissReceived } = useImageHandoff(
+    PAGE_PATH,
+    (file) => handleFile(file, true),
+  );
+
+  /** PNG of the beautified screenshot for "Send to". */
+  const renderPngFile = async () => {
+    if (!stageRef.current) return null;
+    const blob = await exportCanvasToBlob(
+      stageRef.current,
+      "png",
+      resolveExportPixelRatio(canvasSize),
+      backgroundColorForExport,
+    );
+    return toHandoffFile(
+      blob,
+      exportScreenshotFileName(screenshotFile?.name ?? null, "png"),
+    );
   };
 
   const handleScreenshotError = () => {
@@ -326,6 +355,7 @@ export function ScreenshotBeautifierPage() {
         )}
       </div>
 
+      <ReceivedImageNote from={receivedFrom} onDismiss={dismissReceived} />
       <ToolStatus state={error ? "invalid" : "idle"} message={error} />
 
       {!screenshotFile ? (
@@ -753,6 +783,12 @@ export function ScreenshotBeautifierPage() {
               <Copy />
               {exportStatus === "copying" ? "Copying…" : "Copy image"}
             </Button>
+            <SendToImageTool
+              currentPath={PAGE_PATH}
+              size="default"
+              disabled={exportStatus !== "idle"}
+              getFile={renderPngFile}
+            />
             <Button
               type="button"
               onClick={() => void runExport("png")}

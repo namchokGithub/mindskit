@@ -1,6 +1,7 @@
 import { Brush, Download, Eraser, Eye, Hand, ImagePlus, Maximize, Minus, Plus, Redo2, RotateCcw, Trash2, Undo2, Wand2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 
+import { ReceivedImageNote, SendToImageTool } from '@/components/tool/send-to-image-tool'
 import { ToolPageHeader } from '@/components/tool/tool-page-header'
 import { ToolStatus } from '@/components/tool/tool-status'
 import { EmptyState, ToolPage, WorkspaceCanvas } from '@/components/tool/workspace'
@@ -31,12 +32,15 @@ import {
   type Rect,
   type RefineSettings,
 } from '@/features/images/mask-refine'
+import { handoffValidationInput, toHandoffFile } from '@/features/images/handoff'
 import { segmentForegroundMask } from '@/features/images/remove-background'
 import { MAX_IMAGE_DIMENSION, validateImageForResize } from '@/features/images/resize'
+import { useImageHandoff } from '@/hooks/use-image-handoff'
 import { cn } from '@/lib/utils'
 
 /** Refinement and painting run at this size; the model itself works at 1024 px. Export uses the original size. */
 const WORKING_MAX_SIDE = 2048
+const PAGE_PATH = '/images/remove-background'
 const MIN_ZOOM = 0.05
 const MAX_ZOOM = 16
 const MAX_BRUSH_SIZE = 400
@@ -218,10 +222,11 @@ export function ImageRemoveBackgroundPage() {
     setShowOriginal(false)
     setProgress(null)
     setError('')
+    dismissReceived()
   }
 
-  const handleFile = async (file: File) => {
-    const validationError = validateImageForResize(file)
+  const handleFile = async (file: File, received = false) => {
+    const validationError = validateImageForResize(handoffValidationInput(file, received))
     if (validationError) {
       setError(validationError)
       return
@@ -243,6 +248,8 @@ export function ImageRemoveBackgroundPage() {
       if (session === sessionRef.current) setIsLoading(false)
     }
   }
+
+  const { receivedFrom, dismiss: dismissReceived } = useImageHandoff(PAGE_PATH, (file) => handleFile(file, true))
 
   const runRemoveBackground = async () => {
     if (!working) return
@@ -483,24 +490,31 @@ export function ImageRemoveBackgroundPage() {
 
   // ---- export ----
 
+  /** Full-resolution PNG of the current cut-out (refinement, brush edits, and despill applied). */
+  const renderPngBlob = async (): Promise<Blob | null> => {
+    if (!working || !refined) return null
+    const alpha = applyEdits(refined, layerRef.current)
+    const { fullWidth: width, fullHeight: height } = working
+    const { canvas, context } = createCanvas(width, height)
+    let rgba: Uint8ClampedArray = working.rgba
+    if (width !== working.width || height !== working.height) {
+      if (!bitmapRef.current) throw new Error('The original image is no longer available. Choose it again.')
+      context.drawImage(bitmapRef.current, 0, 0)
+      rgba = context.getImageData(0, 0, width, height).data
+    }
+    const output = context.createImageData(width, height)
+    composeCutout(rgba, resizeAlpha(alpha, working.width, working.height, width, height), null, background, settings.despill / 100, output.data, width, fullRect(width, height))
+    context.putImageData(output, 0, 0)
+    return canvasToBlob(canvas)
+  }
+
   const exportPng = async () => {
-    if (!working || !refined) return
+    if (!working) return
     setIsExporting(true)
     setError('')
     try {
-      const alpha = applyEdits(refined, layerRef.current)
-      const { fullWidth: width, fullHeight: height } = working
-      const { canvas, context } = createCanvas(width, height)
-      let rgba: Uint8ClampedArray = working.rgba
-      if (width !== working.width || height !== working.height) {
-        if (!bitmapRef.current) throw new Error('The original image is no longer available. Choose it again.')
-        context.drawImage(bitmapRef.current, 0, 0)
-        rgba = context.getImageData(0, 0, width, height).data
-      }
-      const output = context.createImageData(width, height)
-      composeCutout(rgba, resizeAlpha(alpha, working.width, working.height, width, height), null, background, settings.despill / 100, output.data, width, fullRect(width, height))
-      context.putImageData(output, 0, 0)
-      downloadBlob(await canvasToBlob(canvas), exportFileName(working.name))
+      const blob = await renderPngBlob()
+      if (blob) downloadBlob(blob, exportFileName(working.name))
     } catch (cause) {
       console.error('[remove-background]', cause)
       setError(`Could not export the PNG: ${cause instanceof Error ? cause.message : String(cause)}`)
@@ -610,6 +624,15 @@ export function ImageRemoveBackgroundPage() {
             <Download />
             {isExporting ? 'Exporting…' : 'Download PNG'}
           </Button>
+          <SendToImageTool
+            currentPath={PAGE_PATH}
+            size="default"
+            disabled={!hasMask || busy || isRefining}
+            getFile={async () => {
+              const blob = await renderPngBlob()
+              return blob && working ? toHandoffFile(blob, exportFileName(working.name)) : null
+            }}
+          />
           <div className="grid grid-cols-2 gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={busy}><ImagePlus />{working ? 'Change' : 'Choose'}</Button>
             <Button type="button" variant="ghost" size="sm" onClick={resetImageState} disabled={!working || busy}><Trash2 />Clear</Button>
@@ -668,6 +691,7 @@ export function ImageRemoveBackgroundPage() {
         showRememberInput={false}
       />
       {fileInput}
+      <ReceivedImageNote from={receivedFrom} onDismiss={dismissReceived} />
       <WorkspaceCanvas className="min-h-0 flex-1" preview={preview} controls={controls} />
       <ToolStatus state={error ? 'invalid' : 'idle'} message={error} />
     </ToolPage>
