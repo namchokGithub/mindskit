@@ -215,6 +215,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.8)
+      '@fontsource/sarabun':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@formkit/auto-animate':
         specifier: ^0.10.0
         version: 0.10.0
@@ -574,6 +577,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource/sarabun@5.3.0':
+    resolution: {integrity: sha512-8GWxnEIG9g/2JlZxU+APaVwipcLMkZkBps9N1tEyBxXWaJEnAtHpuaDYmFVG7lzTgr28orG7//htD/rfxDlfFg==}
 
   '@formkit/auto-animate@0.10.0':
     resolution: {integrity: sha512-KGomRttjUfORuPUaR/ZGQw+6xfMrTM+sxnILv7JAd9AmabU9rg9i6gF/iC0Ih+QpKCubJpCA/1DX9UHKE8cX+A==}
@@ -4461,6 +4467,8 @@ snapshots:
       react-dom: 19.2.8(react@19.2.8)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource/sarabun@5.3.0': {}
 
   '@formkit/auto-animate@0.10.0': {}
 

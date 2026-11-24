@@ -31,6 +31,7 @@ import {
   TextQuote,
   Languages,
   MicVocal,
+  ImagePlay,
   Shuffle,
   Sparkles,
   SplitSquareHorizontal,
@@ -504,6 +505,15 @@ export const tools: ToolDefinition[] = [
     category: "images",
     path: "/images/favicon-generator",
     icon: AppWindow,
+  },
+  {
+    id: "karaoke-image-maker",
+    name: "Karaoke Image Maker",
+    description:
+      "Put Thai lyrics and karaoke readings on an image and export PNG or JPG in your browser.",
+    category: "images",
+    path: "/images/karaoke-image-maker",
+    icon: ImagePlay,
   },
 
   // Screen Simulator

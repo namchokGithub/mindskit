@@ -1,5 +1,6 @@
-import { Download, Eraser, FileText, RotateCcw } from 'lucide-react'
+import { Download, Eraser, FileText, ImagePlay, RotateCcw } from 'lucide-react'
 import { useDeferredValue, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { CodeEditor } from '@/components/tool/code-editor'
 import { CopyButton } from '@/components/tool/copy-button'
@@ -20,6 +21,7 @@ import {
   type KaraokeSyllableSeparator,
   type KaraokeWordSeparator,
 } from '@/features/thai-karaoke/formatter'
+import { pairConverterLines, sendKaraokeLines } from '@/features/thai-karaoke/image-lines'
 import { usePersistedInput } from '@/hooks/use-persisted-input'
 import { useSaveLocally } from '@/hooks/use-save-locally'
 import { cn } from '@/lib/utils'
@@ -78,6 +80,7 @@ function downloadText(text: string, filename: string) {
 
 export function ThaiKaraokePage() {
   const { enabled } = useSaveLocally()
+  const navigate = useNavigate()
   const [input, setInput] = usePersistedInput('thai-karaoke', enabled)
   const [style, setStyle] = useState<KaraokeStyle>(DEFAULT_KARAOKE_FORMAT.style)
   const [letterCase, setLetterCase] = useState<KaraokeLetterCase>(DEFAULT_KARAOKE_FORMAT.letterCase)
@@ -167,6 +170,19 @@ export function ThaiKaraokePage() {
               <Button type="button" size="sm" variant="outline" disabled={!output} onClick={() => downloadText(output, 'thai-karaoke.txt')}>
                 <Download />
                 .txt
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!output}
+                onClick={() => {
+                  sendKaraokeLines(pairConverterLines(deferredInput, output))
+                  navigate('/images/karaoke-image-maker')
+                }}
+              >
+                <ImagePlay />
+                Make image
               </Button>
             </>
           }

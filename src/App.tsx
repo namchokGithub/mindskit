@@ -43,6 +43,9 @@ const MinecraftCraftingCalculatorPage = lazy(() =>
 const ScreenSimulatorPage = lazy(() =>
   import('@/pages/screen-simulator/screen-simulator-page').then((module) => ({ default: module.ScreenSimulatorPage })),
 )
+const KaraokeImageMakerPage = lazy(() =>
+  import('@/pages/karaoke-image-maker-page').then((module) => ({ default: module.KaraokeImageMakerPage })),
+)
 const ThaiKaraokePage = lazy(() =>
   import('@/pages/thai-karaoke-page').then((module) => ({ default: module.ThaiKaraokePage })),
 )
@@ -127,6 +130,7 @@ export default function App() {
           <Route path="/images/crop" element={<ImageCropPage />} />
           <Route path="/images/resize" element={<ImageResizePage />} />
           <Route path="/images/favicon-generator" element={<FaviconGeneratorPage />} />
+          <Route path="/images/karaoke-image-maker" element={<Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}><KaraokeImageMakerPage /></Suspense>} />
           <Route
             path="/images/remove-background"
             element={
