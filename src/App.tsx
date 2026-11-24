@@ -43,6 +43,9 @@ const MinecraftCraftingCalculatorPage = lazy(() =>
 const ScreenSimulatorPage = lazy(() =>
   import('@/pages/screen-simulator/screen-simulator-page').then((module) => ({ default: module.ScreenSimulatorPage })),
 )
+const ThaiKaraokePage = lazy(() =>
+  import('@/pages/thai-karaoke-page').then((module) => ({ default: module.ThaiKaraokePage })),
+)
 const ScreenshotBeautifierPage = lazy(() =>
   import('@/pages/screenshot-beautifier-page').then((module) => ({ default: module.ScreenshotBeautifierPage })),
 )
@@ -120,6 +123,7 @@ export default function App() {
           <Route path="/converters/color" element={<ColorConverterPage />} />
           <Route path="/converters/date-formatter" element={<DateFormatterPage />} />
           <Route path="/converters/roman-numeral-date" element={<RomanNumeralDatePage />} />
+          <Route path="/converters/thai-karaoke" element={<Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}><ThaiKaraokePage /></Suspense>} />
           <Route path="/images/crop" element={<ImageCropPage />} />
           <Route path="/images/resize" element={<ImageResizePage />} />
           <Route path="/images/favicon-generator" element={<FaviconGeneratorPage />} />

@@ -27,7 +27,7 @@ pnpm preview         # serves the production build
 pnpm data:minecraft  # regenerates bundled Minecraft data
 ```
 
-Use `pnpm@11.24.0` as pinned by `packageManager` in `package.json` (via
+Use `pnpm@12.23.0` as pinned by `packageManager` in `package.json` (via
 Corepack). TypeScript is strict; unused locals and parameters are build errors.
 `pnpm build` downloads assets and fails offline or in a network-restricted
 sandbox.

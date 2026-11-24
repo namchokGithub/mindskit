@@ -30,6 +30,7 @@ import {
   GitCompareArrows,
   TextQuote,
   Languages,
+  MicVocal,
   Shuffle,
   Sparkles,
   SplitSquareHorizontal,
@@ -447,6 +448,15 @@ export const tools: ToolDefinition[] = [
     category: "converters",
     path: "/converters/roman-numeral-date",
     icon: CalendarClock,
+  },
+  {
+    id: "thai-karaoke",
+    name: "Thai Karaoke Converter",
+    description:
+      "Convert Thai text into karaoke-style Latin readings and correct uncertain words.",
+    category: "converters",
+    path: "/converters/thai-karaoke",
+    icon: MicVocal,
   },
 
   // Images
