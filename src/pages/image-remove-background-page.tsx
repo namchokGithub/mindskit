@@ -441,7 +441,7 @@ export function ImageRemoveBackgroundPage() {
       dragRef.current = { kind: 'pan', startX: event.clientX, startY: event.clientY, viewX: view.x, viewY: view.y }
       return
     }
-    if (!canPaint || tool === 'pan') return
+    if (!canPaint) return
     const [x, y] = toImagePoint(event)
     const pixelCount = working.width * working.height
     if (!layerRef.current) layerRef.current = createEditLayer(pixelCount)

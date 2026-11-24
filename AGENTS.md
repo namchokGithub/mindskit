@@ -6,25 +6,31 @@ backend, database, authentication service, analytics endpoint, or third-party
 content-processing API without an explicit product decision.
 
 `CONTEXT.md` is the detailed continuation reference. Source code is the
-authority when it disagrees with `README.md` or historical plans in
-`docs/plan/`.
+authority when it disagrees with `README.md`, `CONTEXT.md`, or anything under
+`docs/plan/`, `docs/superpowers/plans/`, or `docs/issues/` (historical plans
+and issue notes, not current specifications).
+
+## Communication
+
+Reply in the language the user writes in. Write code, comments, commit
+messages, and repository documentation in English.
 
 ## Commands
 
 ```bash
 pnpm install
-pnpm dev          # Vite development server (opens a browser)
-pnpm lint         # Oxlint
-pnpm build        # fetches required assets, type-checks, then builds dist/
-pnpm test:sql     # Node test runner: tests/*.test.ts
-pnpm preview      # serves the production build
+pnpm dev             # Vite development server (opens a browser)
+pnpm lint            # Oxlint
+pnpm build           # fetches background-removal assets (network), type-checks, builds dist/
+pnpm test:sql        # all unit tests: node --test tests/*.test.ts (not only SQL)
+pnpm preview         # serves the production build
+pnpm data:minecraft  # regenerates bundled Minecraft data
 ```
 
-Use the pnpm version pinned in `package.json`. TypeScript is strict; unused
-locals and parameters are build errors. `pnpm test:sql` covers SQL, JSON data
-generation, and quick-tool regression cases, but it is not a substitute for
-browser testing of editors, downloads, clipboard access, persistence,
-responsive navigation, and themes.
+Use `pnpm@11.24.0` as pinned by `packageManager` in `package.json` (via
+Corepack). TypeScript is strict; unused locals and parameters are build errors.
+`pnpm build` downloads assets and fails offline or in a network-restricted
+sandbox.
 
 ## Project map
 
@@ -46,6 +52,9 @@ responsive navigation, and themes.
   tokens and initialization. Keep theme IDs/defaults synchronized.
 - `public/_headers` and `public/_redirects`: host-level security policy and
   SPA fallback. Review CSP before introducing a new runtime resource.
+- `tests/`: Node test runner unit tests for non-visual logic (SQL, JSON, JWT,
+  images, CSP compatibility, tool catalog, and more).
+- `docs/ui-patterns.md`, `docs/animation.md`: current UI and motion rules.
 
 Imports may use the `@/` alias for `src/`.
 
@@ -60,8 +69,7 @@ Imports may use the `@/` alias for `src/`.
    status controls, formatter/text-transform pages) before creating new ones.
 4. If input persistence is appropriate, use a unique key through the opt-in
    persistence hooks. Consider large-input confirmation for costly work.
-5. Run automated checks only when the user requests them. The user verifies
-   the browser flow, mobile navigation, and light/dark themes manually.
+5. Follow the testing and verification rules below.
 6. Update `CONTEXT.md` and `README.md` for user-visible behavior changes.
 
 Routes and categories are intentionally not a one-to-one URL model: preserve
@@ -76,6 +84,8 @@ existing legacy paths unless the change explicitly migrates them.
   purge of every historical key.
 - Never persist JWT tokens/secrets or generated passwords. Keep those values
   in component memory, as the existing tools do.
+- Image handoffs between image tools are in-memory PNGs. Do not write handed-off
+  images to `localStorage`, IndexedDB, or other persistent storage.
 - JWT decoding does not prove authenticity. SQL Parameters Preview is for
   local debugging and must not be described as safe query substitution.
 - Preserve dialect-aware SQL escaping and validation; do not replace it with
@@ -83,17 +93,24 @@ existing legacy paths unless the change explicitly migrates them.
 - Maintain the CSP-compatible, same-origin resource model in `public/_headers`.
   The build's background-removal asset fetch is intentional; do not add
   unrelated network behavior.
+- The CSP forbids `eval` and `new Function`. Do not add dependencies or code
+  that rely on them; patch or replace such code (see the bundled `ndarray`
+  patch) and keep `tests/csp-compat.test.ts` passing.
 
 ## UI and styling guardrails
 
 - Preserve accessibility and Radix/shadcn patterns already used by the app.
 - Use semantic theme tokens rather than hard-coded palette values. Verify all
-  six named themes and system mode when changing shared layout or colors.
+  six named themes (`pearl-light`, `mint-frost`, `amber-dawn`,
+  `midnight-violet`, `aurora-blue`, `cyber-rose`) and system mode when
+  changing shared layout or colors.
 - `AppShell` deliberately forms a stacking context so the fixed decorative
   `src/assets/bg.png` remains behind content. Keep the asset decorative,
   bottom-aligned, and legible rather than turning it into a viewport cover.
-- Follow `docs/ui-patterns.md` for tool page structure: `ToolPage`, `ToolPageHeader`, one of the four workspace
-  layouts in `src/components/tool/workspace.tsx`, one primary button per toolbar, and `EmptyState` / output panes.
+- Follow `docs/ui-patterns.md` for tool page structure: `ToolPage`,
+  `ToolPageHeader`, one of the four workspace layouts in
+  `src/components/tool/workspace.tsx`, one primary button per toolbar, and
+  `EmptyState` / output panes.
 - Follow `docs/animation.md` for any animation: keep it opt-in per feature,
   use `MotionProvider`/`m.*` and the presets in `src/lib/motion.ts`, never
   stack Motion `layout` or AutoAnimate on `@dnd-kit` sortable items, and
@@ -101,29 +118,41 @@ existing legacy paths unless the change explicitly migrates them.
 - Preserve the 10 MiB `CodeEditor` import limit and language-specific file
   filtering unless a tool has an explicit reason to change them.
 
-## Verification expectations
+## Testing and verification
 
-- Do not run `pnpm lint`, `pnpm build`, `pnpm test:sql`, or any other test or
-  build command unless the user explicitly requests it.
-- Report which checks were not run. Do not claim a browser-only flow is
-  verified without exercising it in a browser.
-- **Testing policy:** Do not create or update automated tests for UI-only work
-  (visual styling, layout, presentation components, or page appearance); the
-  user performs that verification manually. Add automated tests for domain,
-  application, repository, persistence, security-rule, migration, and other
-  non-visual logic. Only change a UI test when the user explicitly asks for it
-  or a UI change also changes non-visual behavior.
+- **Writing tests:** Add automated tests for domain, application, repository,
+  persistence, security-rule, migration, and other non-visual logic. Do not
+  create or update automated tests for UI-only work (visual styling, layout,
+  presentation components, or page appearance). Change a UI test only when the
+  user asks or a UI change also changes non-visual behavior.
+- **Running checks:** You may run only the test files you added or changed,
+  for example `node --test tests/<name>.test.ts`. Do not run `pnpm lint`,
+  `pnpm build`, `pnpm test:sql` (the full suite), or other build commands
+  unless the user explicitly requests it.
+- **Browser:** The user verifies browser flows, mobile navigation, and
+  light/dark themes manually. Start the dev server or use browser automation
+  only when the user asks for it.
+- Report which checks were and were not run. Do not claim a browser-only flow
+  (editors, downloads, clipboard, persistence, responsive navigation, themes)
+  is verified without exercising it in a browser.
 
 ## Decisions
 
-- Whenever a decision is required (scope, approach, naming, behavior, trade-offs,
-  or anything not stated in the request), ask the user first. Do not decide on
-  your own.
+Ask the user before deciding anything that affects:
+
+- scope (adding, removing, or deferring requested work);
+- user-visible behavior, UX, copy, or tool naming;
+- data formats, persistence keys, routes, or tool IDs;
+- new dependencies or runtime resources;
+- privacy, security, or CSP.
+
+For implementation details inside those boundaries (internal names, file
+layout, helper structure), follow existing patterns in the codebase without
+asking.
 
 ## Git and releases
 
-- Do not create commits, tags, pushes, or GitHub Releases unless the user
-  explicitly requests the action.
+- Do not create commits or tags unless the user explicitly requests it.
 - Never run `git push` (branches, tags, or `--force`) or create a GitHub
   Release. Prepare the commit or tag locally, then hand the user the exact
   push/release command to run.
@@ -132,36 +161,27 @@ existing legacy paths unless the change explicitly migrates them.
   counts co-author trailers as repository contributors, and a pushed trailer
   cannot be removed without rewriting history.
 
-## Git Commit Message
+## After code changes
 
-- After completing code changes:
-  - Summarize what changed.
-  - List important files changed.
-  - Mention any remaining concerns or follow-up work.
-  - Suggest a concise Git commit message based on the actual changes.
-  - Use Conventional Commits format when appropriate.
-  - Never run `git commit` unless explicitly requested.
+Report:
 
-```
-You are a senior software engineer reviewing git changes.
+- what changed and the important files touched;
+- which checks were and were not run;
+- remaining concerns or follow-up work;
+- a suggested commit message.
 
-Your task:
-Generate a high-quality commit message based ONLY on the relevant git changes.
+Commit message rules:
 
-Rules:
-
-1. If staged changes exist (git diff --cached), use ONLY staged changes.
-2. If no staged changes exist, use the regular git diff.
-3. Never mix staged and unstaged changes.
-4. Use Conventional Commit format.
-5. Include scope if identifiable (e.g., invoice, payment, stock, auth, api).
-6. If Jira keys appear in the diff, include them after the scope.
-7. Keep subject line concise (<= 100 chars).
-8. Focus on business impact, not syntax noise.
-9. Ignore whitespace-only or formatting-only changes.
-
-Output format:<type></type>feat(feature_name<scope></scope>): <short summary></short>
+1. Base it on staged changes (`git diff --cached`) if any exist; otherwise on
+   `git diff`. Never mix the two.
+2. Use Conventional Commits: `<type>(<scope>): <summary>`, with a scope when
+   one is identifiable (for example `sql`, `images`, `remove-background`).
+3. Include Jira keys after the scope if they appear in the diff.
+4. Keep the subject at 100 characters or fewer and focus on user or business
+   impact, not syntax noise. Ignore whitespace-only changes.
 
 Example:
-fix(payments): store payment payload as payments array only and keep backward-compatible parsing
+
+```
+fix(remove-background): reset mounted flag on mount so results are not dropped under StrictMode
 ```

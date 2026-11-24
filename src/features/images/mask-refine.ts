@@ -198,7 +198,7 @@ export function edgeRefineParameters(strength: number, width: number, height: nu
 
 /** Model mask (0–255) → refined alpha (0–1) at the same size. `gray` is only needed for edge refine. */
 export function refineMask(baseAlpha: ArrayLike<number>, gray: Float32Array | null, width: number, height: number, settings: RefineSettings): Float32Array {
-  let alpha = new Float32Array(width * height)
+  let alpha: Float32Array = new Float32Array(width * height)
   for (let i = 0; i < alpha.length; i += 1) alpha[i] = baseAlpha[i] / 255
   if (settings.edgeRefine && gray) {
     const { radius, epsilon } = edgeRefineParameters(settings.edgeStrength, width, height)
