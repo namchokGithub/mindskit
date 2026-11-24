@@ -14,7 +14,9 @@ import { convertThaiKaraoke, needsReview, summarizeKaraokeWords, type KaraokeWor
 import {
   DEFAULT_KARAOKE_FORMAT,
   formatKaraoke,
+  styledSyllables,
   type KaraokeLetterCase,
+  type KaraokeStyle,
   type KaraokeSyllableSeparator,
   type KaraokeWordSeparator,
 } from '@/features/thai-karaoke/formatter'
@@ -27,6 +29,11 @@ const SAMPLE = `คิดถึงเธอทุกวัน
 ไม่เป็นไรนะ ยิ้มไว้ดีๆ`
 
 const MAX_REVIEW_ROWS = 200
+
+const styleOptions: Array<{ value: KaraokeStyle; label: string }> = [
+  { value: 'rtgs', label: 'Standard (RTGS)' },
+  { value: 'casual', label: 'Casual Karaoke' },
+]
 
 const letterCaseOptions: Array<{ value: KaraokeLetterCase; label: string }> = [
   { value: 'lower', label: 'lowercase' },
@@ -72,6 +79,7 @@ function downloadText(text: string, filename: string) {
 export function ThaiKaraokePage() {
   const { enabled } = useSaveLocally()
   const [input, setInput] = usePersistedInput('thai-karaoke', enabled)
+  const [style, setStyle] = useState<KaraokeStyle>(DEFAULT_KARAOKE_FORMAT.style)
   const [letterCase, setLetterCase] = useState<KaraokeLetterCase>(DEFAULT_KARAOKE_FORMAT.letterCase)
   const [syllableKey, setSyllableKey] = useState('none')
   const [wordKey, setWordKey] = useState('space')
@@ -84,11 +92,12 @@ export function ThaiKaraokePage() {
   const output = useMemo(
     () =>
       formatKaraoke(lines, {
+        style,
         letterCase,
         syllableSeparator: syllableSeparatorOptions.find((option) => option.value === syllableKey)?.separator ?? '',
         wordSeparator: wordSeparatorOptions.find((option) => option.value === wordKey)?.separator ?? ' ',
       }),
-    [lines, letterCase, syllableKey, wordKey],
+    [lines, style, letterCase, syllableKey, wordKey],
   )
   const words = useMemo(() => summarizeKaraokeWords(lines), [lines])
   const reviewCount = words.filter((word) => needsReview(word.status)).length
@@ -113,7 +122,7 @@ export function ThaiKaraokePage() {
     <ToolPage>
       <ToolPageHeader
         title="Thai Karaoke Converter"
-        description="Turn Thai lyrics and text into karaoke-style Latin readings (RTGS, no tone marks), then review and correct uncertain words — all in your browser."
+        description="Turn Thai lyrics and text into karaoke-style Latin readings (Standard RTGS or Casual, no tone marks), then review and correct uncertain words — all in your browser."
       />
 
       <WorkspaceSplit
@@ -123,6 +132,10 @@ export function ThaiKaraokePage() {
               <FileText />
               Sample
             </Button>
+            <Select value={style} onValueChange={(value) => setStyle(value as KaraokeStyle)}>
+              <SelectTrigger size="sm" className="w-auto min-w-[8rem]" aria-label="Reading style"><SelectValue /></SelectTrigger>
+              <SelectContent>{styleOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+            </Select>
             <Select value={letterCase} onValueChange={(value) => setLetterCase(value as KaraokeLetterCase)}>
               <SelectTrigger size="sm" className="w-auto min-w-[8rem]" aria-label="Letter case"><SelectValue /></SelectTrigger>
               <SelectContent>{letterCaseOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
@@ -198,7 +211,7 @@ export function ThaiKaraokePage() {
                   <input
                     value={overrides[word.thai] ?? ''}
                     onChange={(event) => setOverride(word.thai, event.target.value)}
-                    placeholder={word.status === 'failed' ? 'Type a reading' : word.syllables.join('-')}
+                    placeholder={word.status === 'failed' ? 'Type a reading' : styledSyllables(word, style).join('-')}
                     aria-label={`Reading for ${word.thai}`}
                     spellCheck={false}
                     autoCapitalize="off"

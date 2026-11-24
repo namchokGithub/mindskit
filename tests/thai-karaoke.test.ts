@@ -1,12 +1,42 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { toCasualSyllables } from '../src/features/thai-karaoke/casual.ts'
 import { convertThaiKaraoke, parseReading, readThaiWord, summarizeKaraokeWords } from '../src/features/thai-karaoke/converter.ts'
 import { groupDictionaryWords, lookupDictionaryReading } from '../src/features/thai-karaoke/dictionary.ts'
 import { formatKaraoke } from '../src/features/thai-karaoke/formatter.ts'
 
 const format = (text: string, options = {}, overrides = {}) =>
-  formatKaraoke(convertThaiKaraoke(text, overrides), { letterCase: 'lower', syllableSeparator: '', wordSeparator: ' ', ...options })
+  formatKaraoke(convertThaiKaraoke(text, overrides), { style: 'rtgs', letterCase: 'lower', syllableSeparator: '', wordSeparator: ' ', ...options })
+
+test('casual style applies the jo, oe, ue, and final wo rules', () => {
+  assert.deepEqual(toCasualSyllables('ใจ', ['chai']), ['jai'])
+  assert.deepEqual(toCasualSyllables('จริง', ['ching']), ['jing'])
+  assert.deepEqual(toCasualSyllables('ชีวิต', ['chi', 'wit']), ['chi', 'wit'])
+  assert.deepEqual(toCasualSyllables('หัวใจ', ['hua', 'chai']), ['hua', 'jai'])
+  assert.deepEqual(toCasualSyllables('เธอ', ['thoe']), ['ther'])
+  assert.deepEqual(toCasualSyllables('เดิน', ['doen']), ['dern'])
+  assert.deepEqual(toCasualSyllables('เคย', ['khoei']), ['khoei'])
+  assert.deepEqual(toCasualSyllables('ถึง', ['thueng']), ['theung'])
+  assert.deepEqual(toCasualSyllables('เพื่อน', ['phuean']), ['pheuan'])
+  assert.deepEqual(toCasualSyllables('แล้ว', ['laeo']), ['laew'])
+  assert.deepEqual(toCasualSyllables('เดียว', ['diao']), ['diew'])
+  assert.deepEqual(toCasualSyllables('เร็ว', ['reo']), ['rew'])
+  assert.deepEqual(toCasualSyllables('หิว', ['hio']), ['hiw'])
+  assert.deepEqual(toCasualSyllables('ข้าว', ['khao']), ['khao'])
+})
+
+test('casual style uses per-syllable Thai when available and keeps ambiguous ch', () => {
+  assert.deepEqual(toCasualSyllables('จับฉลาก', ['chap', 'cha', 'lak'], ['จับ', 'ฉ', 'ลาก']), ['jap', 'cha', 'lak'])
+  assert.deepEqual(toCasualSyllables('จับฉลาก', ['chap', 'cha', 'lak']), ['jap', 'cha', 'lak'])
+  // Final จ is read as t, so letters and ch syllables do not pair up: keep ch.
+  assert.deepEqual(toCasualSyllables('กิจจา', ['kit', 'cha']), ['kit', 'cha'])
+})
+
+test('casual formatting leaves edited readings exactly as typed', () => {
+  assert.equal(format('เธอคือใจ', { style: 'casual' }, { คือ: 'khue' }), 'ther khue jai')
+  assert.equal(format('คิดถึงเธอเสมอ', { style: 'casual', syllableSeparator: '-' }), 'khit-theung ther sa-mer')
+})
 
 test('reads dictionary words and exact dictionary compounds as certain', () => {
   assert.deepEqual(lookupDictionaryReading('เป็น'), ['pen'])

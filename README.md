@@ -73,7 +73,7 @@ CSV requires a header and preserves values as text, including leading zeros. Emp
 - Color Converter for HEX (with or without `#`), RGB, and HSL formats, plus a palette builder that extracts named `#RGB` / `#RRGGBB` colors and 6-digit codes without `#` from pasted text (common words such as add or facade are ignored) and lets you add, edit, reorder by dragging, and copy up to 20 colors
 - Date Formatter for common date-time formats and time zones
 - Roman Numeral Date Converter for Gregorian `YYYY-MM-DD` / `DD/MM/YYYY` dates and `DD/MM/YYYY` Roman numeral dates
-- Thai Karaoke Converter for Thai text to karaoke-style Latin readings (RTGS without tone marks), with letter case, syllable and word separators, per-word reading edits, copy, and `.txt` download; words outside the built-in dictionary are flagged for review
+- Thai Karaoke Converter for Thai text to karaoke-style Latin readings (Standard RTGS or an easier Casual style, without tone marks), with letter case, syllable and word separators, per-word reading edits, copy, and `.txt` download; words outside the built-in dictionary are flagged for review
 
 ### Image tools
 

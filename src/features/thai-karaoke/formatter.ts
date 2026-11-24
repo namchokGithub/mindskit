@@ -1,19 +1,36 @@
-import type { KaraokeLine } from './converter.ts'
+import { toCasualSyllables } from './casual.ts'
+import type { KaraokeLine, KaraokeWordStatus } from './converter.ts'
 
+export type KaraokeStyle = 'rtgs' | 'casual'
 export type KaraokeLetterCase = 'lower' | 'upper' | 'title'
 export type KaraokeSyllableSeparator = '' | '-' | ' ' | '/'
 export type KaraokeWordSeparator = ' ' | ' - ' | ' / '
 
 export interface KaraokeFormatOptions {
+  style: KaraokeStyle
   letterCase: KaraokeLetterCase
   syllableSeparator: KaraokeSyllableSeparator
   wordSeparator: KaraokeWordSeparator
 }
 
 export const DEFAULT_KARAOKE_FORMAT: KaraokeFormatOptions = {
+  style: 'rtgs',
   letterCase: 'lower',
   syllableSeparator: '',
   wordSeparator: ' ',
+}
+
+/**
+ * A word's syllables in the chosen style. Readings typed by the user are used exactly as typed;
+ * every other reading is RTGS, converted to Casual Karaoke when that style is selected.
+ */
+export function styledSyllables(
+  word: { thai: string; syllables: readonly string[]; syllableThai?: readonly string[]; status: KaraokeWordStatus },
+  style: KaraokeStyle,
+): string[] {
+  const syllables = word.syllables.map((syllable) => syllable.toLowerCase())
+  if (style === 'rtgs' || word.status === 'edited') return syllables
+  return toCasualSyllables(word.thai, syllables, word.syllableThai)
 }
 
 function applyCase(word: string, letterCase: KaraokeLetterCase): string {
@@ -46,7 +63,7 @@ export function formatKaraoke(lines: KaraokeLine[], options: KaraokeFormatOption
         const reading =
           token.status === 'failed'
             ? token.thai
-            : applyCase(token.syllables.map((syllable) => syllable.toLowerCase()).join(options.syllableSeparator), options.letterCase)
+            : applyCase(styledSyllables(token, options.style).join(options.syllableSeparator), options.letterCase)
         if (previousWasWord) output += options.wordSeparator
         else if (ENDS_WITH_WORD_CHAR.test(output)) output += ' '
         output += reading

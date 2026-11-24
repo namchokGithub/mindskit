@@ -12,7 +12,14 @@ import { groupDictionaryWords, lookupDictionaryReading } from './dictionary.ts'
 export type KaraokeWordStatus = 'dictionary' | 'edited' | 'guessed' | 'failed'
 
 export type KaraokeToken =
-  | { kind: 'word'; thai: string; syllables: string[]; status: KaraokeWordStatus }
+  | {
+      kind: 'word'
+      thai: string
+      syllables: string[]
+      /** Thai spelling of each syllable, when the source provides it (library readings). */
+      syllableThai?: string[]
+      status: KaraokeWordStatus
+    }
   | { kind: 'text'; text: string }
 
 export type KaraokeLine = KaraokeToken[]
@@ -31,21 +38,27 @@ function getSegmenter(): Intl.Segmenter {
   return segmenter
 }
 
-const libraryCache = new Map<string, { syllables: string[]; status: 'guessed' | 'failed' }>()
+type LibraryReading = { syllables: string[]; syllableThai: string[]; status: 'guessed' | 'failed' }
 
-function readWithLibrary(word: string): { syllables: string[]; status: 'guessed' | 'failed' } {
+const libraryCache = new Map<string, LibraryReading>()
+
+function readWithLibrary(word: string): LibraryReading {
   const cached = libraryCache.get(word)
-  if (cached) return cached
+  if (cached) return { ...cached, syllables: [...cached.syllables], syllableThai: [...cached.syllableThai] }
 
-  let syllables: string[] = []
+  let segments: Array<{ thai: string; roman: string }> = []
   try {
-    syllables = romanizeDetailed(word).segments.map((segment) => segment.roman.trim().toLowerCase()).filter(Boolean)
+    segments = romanizeDetailed(word)
+      .segments.map((segment) => ({ thai: segment.thai, roman: segment.roman.trim().toLowerCase() }))
+      .filter((segment) => segment.roman)
   } catch {
-    syllables = []
+    segments = []
   }
-  const result = {
+  const syllables = segments.map((segment) => segment.roman)
+  const result: LibraryReading = {
     syllables,
-    status: syllables.length > 0 && syllables.every((syllable) => LATIN_SYLLABLE.test(syllable)) ? ('guessed' as const) : ('failed' as const),
+    syllableThai: segments.map((segment) => segment.thai),
+    status: syllables.length > 0 && syllables.every((syllable) => LATIN_SYLLABLE.test(syllable)) ? 'guessed' : 'failed',
   }
   if (libraryCache.size > 5000) libraryCache.clear()
   libraryCache.set(word, result)
@@ -149,6 +162,7 @@ export function convertThaiKaraoke(text: string, overrides: KaraokeOverrides = {
 export interface KaraokeWordSummary {
   thai: string
   syllables: string[]
+  syllableThai?: string[]
   status: KaraokeWordStatus
   count: number
 }
@@ -160,7 +174,7 @@ export function summarizeKaraokeWords(lines: KaraokeLine[]): KaraokeWordSummary[
     if (token.kind !== 'word') continue
     const existing = words.get(token.thai)
     if (existing) existing.count += 1
-    else words.set(token.thai, { thai: token.thai, syllables: token.syllables, status: token.status, count: 1 })
+    else words.set(token.thai, { thai: token.thai, syllables: token.syllables, syllableThai: token.syllableThai, status: token.status, count: 1 })
   }
   return [...words.values()]
 }
