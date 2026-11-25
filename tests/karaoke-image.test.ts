@@ -4,18 +4,26 @@ import test from 'node:test'
 import { DEFAULT_KARAOKE_FORMAT } from '../src/features/thai-karaoke/formatter.ts'
 import {
   clearKaraokeLinesHandoff,
+  editKaraokeLine,
   pairConverterLines,
   parseKaraokeLines,
   peekKaraokeLinesHandoff,
   resolveKaraokeLines,
   sendKaraokeLines,
   serializeKaraokeLines,
+  toggleHighlight,
 } from '../src/features/thai-karaoke/image-lines.ts'
 import {
   DEFAULT_KARAOKE_IMAGE_DESIGN,
   MAX_OUTPUT_AREA,
+  dragTextBlock,
+  hitTestText,
+  itemLeft,
   karaokeImageFileName,
   layoutKaraokeText,
+  readingColorRuns,
+  readingSyllables,
+  splitReadingRuns,
   resolveOutputSize,
   resolveSourceCrop,
   type KaraokeImageDesign,
@@ -92,21 +100,75 @@ test('places the overlay as a padded band or the full image', () => {
 test('generates readings for lines without a typed reading', () => {
   const resolved = resolveKaraokeLines(
     [
-      { id: 1, thai: 'ฉันรักเธอ', karaoke: null },
-      { id: 2, thai: 'เธอ', karaoke: 'TER' },
-      { id: 3, thai: '  ', karaoke: null },
+      { thai: 'ฉันรักเธอ', karaoke: null, highlights: [1] },
+      { thai: 'เธอ', karaoke: 'TER', highlights: [] },
+      { thai: '  ', karaoke: null, highlights: [] },
     ],
     { ...DEFAULT_KARAOKE_FORMAT, style: 'casual', syllableSeparator: '-' },
   )
   assert.deepEqual(resolved, [
-    { thai: 'ฉันรักเธอ', karaoke: 'chan rak ther' },
-    { thai: 'เธอ', karaoke: 'TER' },
-    { thai: '  ', karaoke: '' },
+    { thai: 'ฉันรักเธอ', karaoke: 'chan rak ther', highlights: [1] },
+    { thai: 'เธอ', karaoke: 'TER', highlights: [] },
+    { thai: '  ', karaoke: '', highlights: [] },
   ])
 })
 
+test('clears highlights when a line text changes and toggles highlight indexes', () => {
+  const line = { id: 1, thai: 'รัก', karaoke: null, highlights: [0] }
+  assert.equal(editKaraokeLine(line, { thai: 'รัก' }), line)
+  assert.deepEqual(editKaraokeLine(line, { thai: 'รักเธอ' }).highlights, [])
+  assert.deepEqual(editKaraokeLine(line, { karaoke: 'rak' }).highlights, [])
+  assert.deepEqual(toggleHighlight([2], 0), [0, 2])
+  assert.deepEqual(toggleHighlight([0, 2], 2), [0])
+})
+
+test('splits readings into syllables and colors them by mode and highlight', () => {
+  assert.deepEqual(splitReadingRuns('khwam-rak  thoe!'), [
+    { text: 'khwam', syllable: 0 },
+    { text: '-', syllable: null },
+    { text: 'rak', syllable: 1 },
+    { text: '  ', syllable: null },
+    { text: 'thoe', syllable: 2 },
+    { text: '!', syllable: null },
+  ])
+  assert.deepEqual(readingSyllables('KA-RA-O-KE'), ['KA', 'RA', 'O', 'KE'])
+
+  const colors = { karaokeColor: '#111111', syllableColoring: 'single' as const, palette: ['#AA0000', '#00AA00', '#0000AA'] as [string, string, string], highlightColor: '#FFFF00' }
+  assert.deepEqual(readingColorRuns('ka-ra o', colors), [{ text: 'ka-ra o', color: '#111111' }])
+  assert.deepEqual(readingColorRuns('ka-ra o', colors, [1]), [
+    { text: 'ka-', color: '#111111' },
+    { text: 'ra ', color: '#FFFF00' },
+    { text: 'o', color: '#111111' },
+  ])
+  assert.deepEqual(readingColorRuns('ka-ra-o-ke', { ...colors, syllableColoring: 'alternate' }), [
+    { text: 'ka-', color: '#AA0000' },
+    { text: 'ra-', color: '#00AA00' },
+    { text: 'o-', color: '#0000AA' },
+    { text: 'ke', color: '#AA0000' },
+  ])
+})
+
+test('hit-tests text rows and drags the block into a clamped custom position', () => {
+  const canvas = { width: 1000, height: 1000 }
+  const layout = layoutKaraokeText([{ thai: 'รัก', karaoke: 'rak' }], design({ position: 'top', thaiSize: 10, karaokeSize: 5 }), canvas, measure)
+  // Thai row: 3 chars × 100 px × 0.5 = 150 px wide, centered at x 500, y 50 + 75.
+  assert.equal(hitTestText(layout, 'center', { x: 500, y: 125 }, canvas), true)
+  assert.equal(hitTestText(layout, 'center', { x: 900, y: 125 }, canvas), false)
+  assert.equal(hitTestText(layout, 'center', { x: 500, y: 900 }, canvas), false)
+
+  const start = design({ position: 'top' })
+  assert.deepEqual(dragTextBlock(start, 50, { dx: 100, dy: 200 }, canvas), { position: 'custom', offsetX: 0.1, offsetY: 0.25 })
+  const custom = design({ position: 'custom', offsetX: 0.4, offsetY: 0.9 })
+  assert.deepEqual(dragTextBlock(custom, 900, { dx: 500, dy: 500 }, canvas), { position: 'custom', offsetX: 0.5, offsetY: 1 })
+
+  const moved = layoutKaraokeText([{ thai: 'รัก', karaoke: '' }], design({ position: 'custom', offsetX: -0.1, offsetY: 0.3 }), canvas, measure)
+  assert.equal(moved.block?.y, 300)
+  assert.equal(moved.items[0].x, 400)
+  assert.equal(itemLeft(moved.items[0], 'center'), 400 - moved.items[0].width / 2)
+})
+
 test('stores only line text and ignores malformed stored values', () => {
-  const stored = serializeKaraokeLines([{ id: 7, thai: 'รัก', karaoke: null }])
+  const stored = serializeKaraokeLines([{ id: 7, thai: 'รัก', karaoke: null, highlights: [0] }])
   assert.equal(stored, '[{"thai":"รัก","karaoke":null}]')
   assert.deepEqual(parseKaraokeLines(stored), [{ thai: 'รัก', karaoke: null }])
   assert.deepEqual(parseKaraokeLines('not json'), [])

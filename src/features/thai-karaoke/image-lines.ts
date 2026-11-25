@@ -2,21 +2,37 @@ import { convertThaiKaraoke } from './converter.ts'
 import { formatKaraoke, type KaraokeFormatOptions } from './formatter.ts'
 import type { KaraokeTextLine } from './image-model.ts'
 
-/** One editable line pair. `karaoke: null` means the reading is generated from the Thai text. */
+/**
+ * One editable line pair. `karaoke: null` means the reading is generated from the Thai text.
+ * `highlights` are reading syllable indexes (see `splitReadingRuns`); they are cleared when the text changes.
+ */
 export interface KaraokeImageLine {
   id: number
   thai: string
   karaoke: string | null
+  highlights: number[]
 }
 
 export const MAX_KARAOKE_IMAGE_LINES = 20
 
 /** Readings for every line: typed readings as-is, the rest converted with `format`. */
-export function resolveKaraokeLines(lines: readonly KaraokeImageLine[], format: KaraokeFormatOptions): KaraokeTextLine[] {
+export function resolveKaraokeLines(lines: readonly Omit<KaraokeImageLine, 'id'>[], format: KaraokeFormatOptions): KaraokeTextLine[] {
   return lines.map((line) => ({
     thai: line.thai,
     karaoke: line.karaoke ?? (line.thai.trim() ? formatKaraoke(convertThaiKaraoke(line.thai.replace(/\s*\n\s*/g, ' ')), format) : ''),
+    highlights: line.highlights,
   }))
+}
+
+/** Applies a text edit to a line; highlights refer to syllable positions, so they reset when the text changes. */
+export function editKaraokeLine(line: KaraokeImageLine, patch: Partial<Pick<KaraokeImageLine, 'thai' | 'karaoke'>>): KaraokeImageLine {
+  const next = { ...line, ...patch }
+  const changed = next.thai !== line.thai || next.karaoke !== line.karaoke
+  return changed ? { ...next, highlights: [] } : line
+}
+
+export function toggleHighlight(highlights: readonly number[], syllable: number): number[] {
+  return highlights.includes(syllable) ? highlights.filter((value) => value !== syllable) : [...highlights, syllable].sort((a, b) => a - b)
 }
 
 /** Stored shape for Remember input: only the text, never the image. */
